@@ -1,0 +1,31 @@
+{
+  "name": "cosmoscope",
+  "version": "1.0.0",
+  "description": "NASA Space Apps 2025 - Cosmoscope: Explore ultra-high-resolution NASA imagery",
+  "scripts": {
+    "install:all": "npm install && cd client && npm install && cd ../server && npm install",
+    "dev": "concurrently \"cd client && npm run dev\" \"cd server && npm run dev\"",
+    "dev:full": "concurrently \"cd client && npm run dev\" \"cd server && npm run dev\" \"npm run cantaloupe\" \"npm run iiif\"",
+    "cantaloupe": "\"C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.16.8-hotspot\\bin\\java.exe\" -Dcantaloupe.config=./cantaloupe.properties -Xmx2g -jar D:/Softwares/cantaloupe-5.0.7_1/cantaloupe-5.0.7/cantaloupe-5.0.7.jar",
+    "iiif": "cd server && node iiif-server.js",
+    "build": "cd client && npm run build && cd ../server && npm run build",
+    "start": "concurrently \"cd client && npm run preview\" \"cd server && npm run start\"",
+    "lint": "cd client && npm run lint && cd ../server && npm run lint",
+    "typecheck": "cd client && npm run typecheck && cd ../server && npm run typecheck"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2"
+  },
+  "keywords": [
+    "nasa",
+    "space",
+    "imagery",
+    "exploration",
+    "3d",
+    "webgl",
+    "react",
+    "typescript"
+  ],
+  "author": "NASA Space Apps 2025 Team",
+  "license": "MIT"
+}

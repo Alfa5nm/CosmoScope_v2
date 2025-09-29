@@ -1,0 +1,98 @@
+[
+  {
+    "id": "apollo-11",
+    "name": "Apollo 11 Landing Site",
+    "mission": "Apollo 11",
+    "date": "1969-07-20",
+    "coordinates": {
+      "lat": 0.6741,
+      "lon": 23.4730
+    },
+    "description": "The first human landing on the Moon. Neil Armstrong and Buzz Aldrin became the first humans to walk on the lunar surface.",
+    "crew": ["Neil Armstrong", "Buzz Aldrin", "Michael Collins"],
+    "duration": "21 hours 36 minutes",
+    "samples": "21.5 kg",
+    "landing_zone": "Sea of Tranquility",
+    "significance": "First human landing on the Moon"
+  },
+  {
+    "id": "apollo-12",
+    "name": "Apollo 12 Landing Site",
+    "mission": "Apollo 12",
+    "date": "1969-11-19",
+    "coordinates": {
+      "lat": -3.0126,
+      "lon": -23.4216
+    },
+    "description": "Precision landing near the Surveyor 3 spacecraft. Demonstrated the ability to land at a specific target.",
+    "crew": ["Pete Conrad", "Alan Bean", "Richard Gordon"],
+    "duration": "31 hours 31 minutes",
+    "samples": "34.4 kg",
+    "landing_zone": "Ocean of Storms",
+    "significance": "Precision landing demonstration"
+  },
+  {
+    "id": "apollo-14",
+    "name": "Apollo 14 Landing Site",
+    "mission": "Apollo 14",
+    "date": "1971-01-31",
+    "coordinates": {
+      "lat": -3.6453,
+      "lon": -17.4714
+    },
+    "description": "Landing in the Fra Mauro formation. First mission to use the Modular Equipment Transporter (MET).",
+    "crew": ["Alan Shepard", "Edgar Mitchell", "Stuart Roosa"],
+    "duration": "33 hours 30 minutes",
+    "samples": "42.9 kg",
+    "landing_zone": "Fra Mauro",
+    "significance": "First use of MET, longest lunar walk"
+  },
+  {
+    "id": "apollo-15",
+    "name": "Apollo 15 Landing Site",
+    "mission": "Apollo 15",
+    "date": "1971-07-26",
+    "coordinates": {
+      "lat": 26.1322,
+      "lon": 3.6339
+    },
+    "description": "First 'J-mission' with extended stay and first use of the Lunar Roving Vehicle (LRV).",
+    "crew": ["David Scott", "James Irwin", "Alfred Worden"],
+    "duration": "66 hours 55 minutes",
+    "samples": "77.3 kg",
+    "landing_zone": "Hadley-Apennine",
+    "significance": "First use of Lunar Roving Vehicle"
+  },
+  {
+    "id": "apollo-16",
+    "name": "Apollo 16 Landing Site",
+    "mission": "Apollo 16",
+    "date": "1972-04-16",
+    "coordinates": {
+      "lat": -8.9730,
+      "lon": 15.5002
+    },
+    "description": "Landing in the Descartes Highlands. First mission to explore the lunar highlands.",
+    "crew": ["John Young", "Charles Duke", "Thomas Mattingly"],
+    "duration": "71 hours 2 minutes",
+    "samples": "95.7 kg",
+    "landing_zone": "Descartes Highlands",
+    "significance": "First exploration of lunar highlands"
+  },
+  {
+    "id": "apollo-17",
+    "name": "Apollo 17 Landing Site",
+    "mission": "Apollo 17",
+    "date": "1972-12-07",
+    "coordinates": {
+      "lat": 20.1908,
+      "lon": 30.7717
+    },
+    "description": "Final Apollo mission. First night launch and the only mission to include a scientist-astronaut.",
+    "crew": ["Eugene Cernan", "Harrison Schmitt", "Ronald Evans"],
+    "duration": "75 hours 0 minutes",
+    "samples": "110.5 kg",
+    "landing_zone": "Taurus-Littrow",
+    "significance": "Final Apollo mission, first scientist-astronaut"
+  }
+]
