@@ -3,6 +3,211 @@
   box-sizing: border-box;
 }
 
+/* Loading animations */
+@keyframes loading {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+@keyframes fadeOut {
+  0% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+  }
+}
+
+/* Cosmic Blink/Embiggen Effects - "Embiggen your eyes" transitions */
+@keyframes cosmicBlink {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  20% {
+    opacity: 0.6;
+    transform: scale(0.98);
+    filter: brightness(0.8);
+  }
+  40% {
+    opacity: 0.2;
+    transform: scale(0.95);
+    filter: brightness(0.6);
+  }
+  60% {
+    opacity: 0.05;
+    transform: scale(0.9);
+    filter: brightness(0.4);
+  }
+  80% {
+    opacity: 0.2;
+    transform: scale(0.95);
+    filter: brightness(0.6);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    filter: brightness(1);
+  }
+}
+
+@keyframes embiggenEyes {
+  0% {
+    transform: scale(1);
+    filter: blur(0px) brightness(1);
+    opacity: 1;
+  }
+  15% {
+    transform: scale(1.05);
+    filter: blur(0.5px) brightness(1.1);
+    opacity: 0.9;
+  }
+  30% {
+    transform: scale(1.1);
+    filter: blur(1px) brightness(1.2);
+    opacity: 0.7;
+  }
+  50% {
+    transform: scale(1.3);
+    filter: blur(2px) brightness(1.5);
+    opacity: 0.3;
+  }
+  70% {
+    transform: scale(1.5);
+    filter: blur(3px) brightness(2);
+    opacity: 0.1;
+  }
+  85% {
+    transform: scale(1.3);
+    filter: blur(2px) brightness(1.5);
+    opacity: 0.3;
+  }
+  100% {
+    transform: scale(1);
+    filter: blur(0px) brightness(1);
+    opacity: 1;
+  }
+}
+
+@keyframes cosmicReveal {
+  0% {
+    opacity: 0;
+    transform: scale(0.8) rotateY(180deg);
+    filter: blur(10px) brightness(0.3);
+  }
+  30% {
+    opacity: 0.3;
+    transform: scale(0.9) rotateY(120deg);
+    filter: blur(8px) brightness(0.5);
+  }
+  60% {
+    opacity: 0.7;
+    transform: scale(1.1) rotateY(60deg);
+    filter: blur(4px) brightness(0.8);
+  }
+  80% {
+    opacity: 0.9;
+    transform: scale(1.05) rotateY(20deg);
+    filter: blur(2px) brightness(0.9);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1) rotateY(0deg);
+    filter: blur(0px) brightness(1);
+  }
+}
+
+@keyframes stargateOpen {
+  0% {
+    opacity: 1;
+    transform: scale(1);
+    border-radius: 0%;
+    filter: brightness(1);
+  }
+  25% {
+    opacity: 0.8;
+    transform: scale(1.1);
+    border-radius: 10%;
+    filter: brightness(1.2);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.3);
+    border-radius: 25%;
+    filter: brightness(1.5);
+  }
+  75% {
+    opacity: 0.8;
+    transform: scale(1.1);
+    border-radius: 10%;
+    filter: brightness(1.2);
+  }
+  100% {
+    opacity: 1;
+    transform: scale(1);
+    border-radius: 0%;
+    filter: brightness(1);
+  }
+}
+
+/* Cosmic transition utility classes */
+.cosmic-blink {
+  animation: cosmicBlink 0.8s ease-in-out;
+}
+
+.embiggen-eyes {
+  animation: embiggenEyes 1.2s ease-in-out;
+}
+
+.cosmic-reveal {
+  animation: cosmicReveal 1.5s ease-out;
+}
+
+.stargate-open {
+  animation: stargateOpen 1.4s ease-in-out;
+}
+
+/* Cosmic overlay for full-screen transitions */
+.cosmic-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  background: radial-gradient(circle at center, 
+    rgba(0, 255, 255, 0.15) 0%, 
+    rgba(0, 0, 17, 0.9) 50%, 
+    rgba(0, 0, 0, 0.98) 100%);
+  z-index: 9999;
+  pointer-events: none;
+  animation: cosmicBlink 0.8s ease-in-out;
+  backdrop-filter: blur(2px);
+}
+
+.cosmic-overlay::before {
+  content: '';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 300px;
+  height: 300px;
+  background: radial-gradient(circle, 
+    rgba(0, 255, 255, 0.4) 0%, 
+    rgba(0, 255, 255, 0.2) 30%, 
+    rgba(0, 255, 255, 0.1) 60%, 
+    transparent 100%);
+  border-radius: 50%;
+  transform: translate(-50%, -50%) scale(0);
+  animation: embiggenEyes 1.2s ease-in-out;
+  box-shadow: 0 0 100px rgba(0, 255, 255, 0.3);
+}
+
 html, body {
   margin: 0;
   padding: 0;

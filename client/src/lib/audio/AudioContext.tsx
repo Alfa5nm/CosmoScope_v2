@@ -38,9 +38,13 @@ export const AudioProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     }
 
     // Create audio elements with proper paths
-    ambientRef.current = new Audio('/src/assets/audio/ambient.mp3')
-    clickRef.current = new Audio('/src/assets/audio/click.mp3')
-    hoverRef.current = new Audio('/src/assets/audio/hover.mp3')
+    const ambientUrl = new URL('../../assets/audio/ambient.mp3', import.meta.url).href
+    const clickUrl = new URL('../../assets/audio/click.mp3', import.meta.url).href
+    const hoverUrl = new URL('../../assets/audio/hover.mp3', import.meta.url).href
+
+    ambientRef.current = new Audio(ambientUrl)
+    clickRef.current = new Audio(clickUrl)
+    hoverRef.current = new Audio(hoverUrl)
     
     // Set preload to auto to ensure audio loads
     if (ambientRef.current) ambientRef.current.preload = 'auto'

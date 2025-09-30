@@ -1,19 +1,140 @@
 import React, { useEffect, useRef, useState } from 'react'
-import maplibregl from 'maplibre-gl'
-import 'maplibre-gl/dist/maplibre-gl.css'
-
-if ((maplibregl as any)?.config) {
-  ;(maplibregl as any).config.MAX_PARALLEL_IMAGE_REQUESTS = 8
-}
+import { loadMapLibre, markLibraryLoaded } from '../lib/dynamicImports'
+import { getLayerZoomLimits, layerSupportsTime, getPlanetConfig, type PlanetId, type LayerId } from '../config/planetLayers'
 
 const envApiUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE_URL = envApiUrl && envApiUrl.length > 0 ? envApiUrl.replace(/\/+$/, '') : ''
 const TILE_BASE_PATH = API_BASE_URL ? `${API_BASE_URL}/api/tiles` : '/api/tiles'
 
-const buildTileTemplate = (planet: string, layerId: string, date?: string) => {
-  const query = date ? `?date=${encodeURIComponent(date)}` : ''
-  return `${TILE_BASE_PATH}/${planet}/${layerId}/{z}/{x}/{y}${query}`
+const KNOWN_PLANETS: PlanetId[] = ['earth', 'mars', 'moon']
+
+const toPlanetId = (value: string): PlanetId =>
+  KNOWN_PLANETS.includes(value as PlanetId) ? (value as PlanetId) : 'earth'
+
+const resolveLayerId = (planetId: PlanetId, candidate: string): LayerId => {
+  const planetConfig = getPlanetConfig(planetId)
+  const fallback = planetConfig.defaultLayer
+  if (planetConfig.layers.some(layer => layer.id === candidate)) {
+    return candidate as LayerId
+  }
+  return fallback
 }
+
+const buildTileTemplate = (planetId: PlanetId, layerId: LayerId, date?: string) => {
+  const query = layerSupportsTime(planetId, layerId) && date ? `?date=${encodeURIComponent(date)}` : ''
+  return `${TILE_BASE_PATH}/${planetId}/${layerId}/{z}/{x}/{y}${query}`
+}
+
+// Enhanced error message generation
+const generateErrorMessage = (error: any, planet: string, layer: string, date?: string): string => {
+  if (typeof error === 'string') {
+    return error
+  }
+  
+  if (error?.status) {
+    const status = error.status
+    const statusText = error.statusText || ''
+    
+    switch (status) {
+      case 404:
+        if (date) {
+          return `No imagery available for ${planet} on ${date}. Try a different date or check if the layer supports time-series data.`
+        }
+        return `Layer "${layer}" not found for ${planet}. The server may not support this layer.`
+      
+      case 403:
+        return `Access denied to ${planet} imagery. Check if your NASA API key is configured.`
+      
+      case 429:
+        return `Rate limit exceeded for NASA imagery. Please wait a moment before trying again.`
+      
+      case 500:
+      case 502:
+      case 503:
+        return `NASA imagery service is temporarily unavailable. Please try again later.`
+      
+      case 400:
+        return `Invalid request for ${planet} imagery. Check the date format and layer parameters.`
+      
+      default:
+        return `Failed to load ${planet} imagery (${status} ${statusText}). Check your connection and try again.`
+    }
+  }
+  
+  if (error?.message) {
+    if (error.message.includes('ENOBUFS') || error.message.includes('ECONNREFUSED')) {
+      return `Cannot connect to the tile server. Make sure the server is running on port 5174.`
+    }
+    if (error.message.includes('CORS')) {
+      return `Cross-origin request blocked. Check server CORS configuration.`
+    }
+    return error.message
+  }
+  
+  return `Failed to load ${planet} imagery. Check the console for technical details.`
+}
+
+const formatErrorDetails = (details: unknown): string | null => {
+  if (details == null) {
+    return null
+  }
+
+  if (typeof details === 'string') {
+    return details
+  }
+
+  if (details instanceof Error) {
+    return `${details.name}: ${details.message}`
+  }
+
+  try {
+    const seen = new WeakSet<any>()
+
+    return JSON.stringify(
+      details,
+      (_key, value) => {
+        if (value instanceof Error) {
+          return {
+            name: value.name,
+            message: value.message,
+            stack: value.stack
+          }
+        }
+
+        if (typeof Event !== 'undefined' && value instanceof Event) {
+          return { type: value.type }
+        }
+
+        if (value instanceof Map) {
+          return Array.from(value.entries())
+        }
+
+        if (value instanceof Set) {
+          return Array.from(value.values())
+        }
+
+        if (typeof value === 'function') {
+          return `[Function ${value.name || 'anonymous'}]`
+        }
+
+        if (typeof value === 'object' && value !== null) {
+          if (seen.has(value)) {
+            return '[Circular]'
+          }
+          seen.add(value)
+        }
+
+        return value
+      },
+      2
+    )
+  } catch (error) {
+    console.warn('Failed to format error details', error)
+    return 'Unable to display technical details.'
+  }
+}
+
+
 interface Map2DProps {
   planet: string
   date: string
@@ -24,36 +145,114 @@ interface Map2DProps {
 
 const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick }) => {
   const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<maplibregl.Map | null>(null)
-  const apolloMarkersRef = useRef<maplibregl.Marker[]>([])
-  const userMarkersRef = useRef<maplibregl.Marker[]>([])
+  const map = useRef<any>(null) // Will be maplibregl.Map after loading
+  const apolloMarkersRef = useRef<any[]>([])
+  const userMarkersRef = useRef<any[]>([])
   const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
+  const [errorMessage, setErrorMessage] = useState<string | null>(null)
+  const [errorDetails, setErrorDetails] = useState<string | null>(null)
+  const [maplibregl, setMaplibregl] = useState<any>(null)
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(true)
+
+  const planetId = toPlanetId(planet)
+  const layerId = resolveLayerId(planetId, layer)
+
+  // Load MapLibre GL dynamically
+  useEffect(() => {
+    let isMounted = true
+
+    const loadLibrary = async () => {
+      try {
+        setIsLoadingLibrary(true)
+        const maplibreglModule = await loadMapLibre()
+        
+        if (isMounted) {
+          setMaplibregl(maplibreglModule)
+          markLibraryLoaded('maplibre')
+          
+          // Configure MapLibre
+          if ((maplibreglModule as any)?.config) {
+            (maplibreglModule as any).config.MAX_PARALLEL_IMAGE_REQUESTS = 8
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load MapLibre GL:', error)
+        if (isMounted) {
+          setErrorMessage('Failed to load map library. Please refresh the page.')
+          setHasError(true)
+        }
+      } finally {
+        if (isMounted) {
+          setIsLoadingLibrary(false)
+        }
+      }
+    }
+
+    loadLibrary()
+
+    return () => {
+      isMounted = false
+    }
+  }, [])
 
   useEffect(() => {
-    if (!mapContainer.current) return
+    if (!mapContainer.current || !maplibregl || isLoadingLibrary) return
 
     console.log(`Initializing map for planet: ${planet}`)
 
-    const initialZoom = planet === 'earth' ? 2 : planet === 'moon' ? 3 : 2
-    const maxZoom = planet === 'earth' ? 9 : planet === 'moon' ? 11 : 11
+    const baseLayerLimits = getLayerZoomLimits(planetId, 'base')
+    const initialZoom = Math.min(planetId === 'earth' ? 2 : planetId === 'moon' ? 3 : 2, baseLayerLimits.max)
 
     // Build tile URL for debugging
-    const tileUrl = buildTileTemplate(planet, 'base', date)
-    console.log('Tile URL:', tileUrl)
+    const tileTemplate = buildTileTemplate(planetId, 'base', date)
+    const testTileUrl = tileTemplate.replace('{z}', '0').replace('{x}', '0').replace('{y}', '0')
+    console.log('Tile template:', tileTemplate)
 
     // Test if the tile URL is accessible
-    fetch(tileUrl)
-      .then(response => {
+    fetch(testTileUrl)
+      .then(async response => {
         console.log('Tile fetch test:', response.status, response.ok)
         if (!response.ok) {
-          console.error('Tile URL not accessible:', response.status, response.statusText)
+          let message = `${response.status} ${response.statusText}`
+          let details = null
+          try {
+            const data = await response.clone().json() as any
+            details = data
+            if (typeof data === 'string') {
+              message = data
+            } else if (data?.details) {
+              message = data.details
+            } else if (data?.error) {
+              message = data.error
+            }
+          } catch (parseError) {
+            console.warn('Failed to parse tile error response:', parseError)
+          }
+          
+          const enhancedMessage = generateErrorMessage(
+            { status: response.status, statusText: response.statusText, message, details },
+            planet,
+            layer,
+            date
+          )
+          
+          console.error('Tile URL not accessible:', enhancedMessage)
+          setErrorMessage(enhancedMessage)
+          setErrorDetails(formatErrorDetails(details))
           setHasError(true)
+        } else {
+          setErrorMessage(null)
+          setErrorDetails(null)
+          setHasError(false)
         }
       })
       .catch(error => {
         console.error('Tile fetch error:', error)
+        const enhancedMessage = generateErrorMessage(error, planet, layer, date)
+        setErrorMessage(enhancedMessage)
+        setErrorDetails(formatErrorDetails(error))
         setHasError(true)
       })
 
@@ -67,11 +266,11 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
             type: 'raster',
             tiles: [
               // Use our backend proxy for NASA tiles
-              tileUrl
+              tileTemplate
             ],
             tileSize: 256,
-            minzoom: 0,
-            maxzoom: 18
+            minzoom: baseLayerLimits.min,
+            maxzoom: baseLayerLimits.max
           }
         },
         layers: [
@@ -87,8 +286,8 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
       },
       center: planet === 'earth' ? [0, 0] : planet === 'moon' ? [0, 0] : [0, 0],
       zoom: initialZoom,
-      maxZoom,
-      minZoom: 0,
+      maxZoom: baseLayerLimits.max,
+      minZoom: baseLayerLimits.min,
       renderWorldCopies: false
     })
 
@@ -108,37 +307,36 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
       addUserLabels()
     })
 
-    const showError = () => {
-      setHasError(true)
-      const errorDiv = document.getElementById('map-error')
-      if (errorDiv) {
-        errorDiv.style.display = 'block'
+    const showError = (message?: string, details?: any) => {
+      if (message) {
+        const enhancedMessage = generateErrorMessage(message, planet, layer, date)
+        setErrorMessage(enhancedMessage)
       }
+      setErrorDetails(formatErrorDetails(details))
+      setHasError(true)
     }
 
     const hideError = () => {
       setHasError(false)
-      const errorDiv = document.getElementById('map-error')
-      if (errorDiv) {
-        errorDiv.style.display = 'none'
-      }
+      setErrorMessage(null)
+      setErrorDetails(null)
     }
 
     loadTimeoutRef.current = window.setTimeout(() => {
       if (!isLoaded) {
         console.warn('Map tiles taking too long to load, showing error')
-        showError()
+        showError('Map tiles are taking too long to load. This might indicate a server connection issue.')
       }
     }, 10000)
 
     // Handle map errors
-    map.current.on('error', (e) => {
+    map.current.on('error', (e: any) => {
       console.error('Map error:', e)
-      showError()
+      showError('Map rendering error', e)
     })
 
     // Handle source errors
-    map.current.on('sourcedata', (e) => {
+    map.current.on('sourcedata', (e: any) => {
       if (e.isSourceLoaded && e.sourceId === 'base-layer') {
         console.log('Base layer loaded')
         if (loadTimeoutRef.current) {
@@ -150,7 +348,7 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
     })
 
     // Handle tile loading errors
-    map.current.on('sourcedata', (e) => {
+    map.current.on('sourcedata', (e: any) => {
       if (e.sourceId === 'base-layer') {
         if (e.isSourceLoaded) {
           console.log('Base layer source loaded successfully')
@@ -161,21 +359,21 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
     })
 
     // Add more detailed tile loading events
-    map.current.on('sourcedata', (e) => {
+    map.current.on('sourcedata', (e: any) => {
       if (e.sourceId === 'base-layer') {
         console.log('Source data event:', e)
         if (e.tile) {
           console.log('Tile event:', e.tile)
           if (e.tile.state === 'errored') {
             console.error('Tile failed to load:', e.tile.url)
-            showError()
+            showError('Individual tile failed to load', { tileUrl: e.tile.url })
           }
         }
       }
     })
 
     // Handle raster source errors
-    map.current.on('error', (e) => {
+    map.current.on('error', (e: any) => {
       console.error('MapLibre error:', e)
     })
 
@@ -206,30 +404,37 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
         map.current = null
       }
     }
-  }, [planet, date])
+  }, [planetId, date, maplibregl, isLoadingLibrary])
 
   useEffect(() => {
     if (!map.current || !isLoaded) return
 
-    console.log(`Switching to layer: ${layer} for planet: ${planet}`)
+    console.log(`Switching to layer: ${layerId} for planet: ${planetId}`)
 
-    // Update layer when layer prop changes
     const sourceId = 'current-layer'
-    
-    // Remove existing source if it exists
+
     if (map.current.getSource(sourceId)) {
       map.current.removeLayer('current-layer')
       map.current.removeSource(sourceId)
     }
 
-    // Add new source using our backend proxy
+    const zoomLimits = getLayerZoomLimits(planetId, layerId)
+    const currentZoom = map.current.getZoom()
+    const clampedZoom = Math.min(Math.max(currentZoom, zoomLimits.min), zoomLimits.max)
+    if (clampedZoom !== currentZoom) {
+      map.current.jumpTo({ zoom: clampedZoom })
+    }
+    map.current.setMaxZoom(zoomLimits.max)
+    map.current.setMinZoom(zoomLimits.min)
+
     map.current.addSource(sourceId, {
       type: 'raster',
-      tiles: [`${buildTileTemplate(planet, layer, date)}`],
-      tileSize: 256
+      tiles: [`${buildTileTemplate(planetId, layerId, date)}`],
+      tileSize: 256,
+      minzoom: zoomLimits.min,
+      maxzoom: zoomLimits.max
     })
 
-    // Add new layer
     map.current.addLayer({
       id: 'current-layer',
       type: 'raster',
@@ -238,7 +443,7 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
         'raster-opacity': 0.8
       }
     })
-  }, [layer, date, planet, isLoaded])
+  }, [layerId, date, planetId, isLoaded])
 
   const addApolloMarkers = () => {
     if (!map.current || planet !== 'moon') return
@@ -406,7 +611,7 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
       }}
     >
       {/* Fallback content if map fails to load */}
-      {!isLoaded && (
+      {(!isLoaded || isLoadingLibrary) && (
         <div style={{
           position: 'absolute',
           top: '50%',
@@ -424,27 +629,74 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
             {planet.charAt(0).toUpperCase() + planet.slice(1)}
           </div>
           <div style={{ fontSize: '14px', opacity: 0.7 }}>
-            Loading map tiles...
+            {isLoadingLibrary ? 'Loading map library...' : 'Loading map tiles...'}
           </div>
         </div>
       )}
 
-      {/* Error overlay if tiles fail to load */}
+      {/* Enhanced error overlay with specific messages */}
       {hasError && (
-        <div style={{
-          position: 'absolute',
-          top: '10px',
-          left: '10px',
-          right: '10px',
-          background: 'rgba(255, 0, 0, 0.8)',
-          color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          fontFamily: 'Courier New, monospace',
-          fontSize: '12px',
-          zIndex: 1000
-        }}>
-          Map tiles failed to load. Check console for details.
+        <div
+          style={{
+            position: 'absolute',
+            top: '10px',
+            left: '10px',
+            right: '10px',
+            background: 'rgba(255, 0, 0, 0.9)',
+            color: 'white',
+            padding: '16px',
+            borderRadius: '8px',
+            fontFamily: 'Courier New, monospace',
+            fontSize: '14px',
+            zIndex: 1000,
+            border: '2px solid rgba(255, 255, 255, 0.3)',
+            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
+            <span style={{ fontSize: '18px', marginRight: '8px' }}>⚠️</span>
+            <strong style={{ fontSize: '16px' }}>Map Loading Error</strong>
+          </div>
+          
+          <div style={{ marginBottom: '12px', lineHeight: 1.4 }}>
+            {errorMessage}
+          </div>
+          
+          {/* Action suggestions based on error type */}
+          <div style={{ fontSize: '12px', opacity: 0.9, borderTop: '1px solid rgba(255, 255, 255, 0.3)', paddingTop: '8px' }}>
+            {errorMessage?.includes('server') && (
+              <div>💡 Try refreshing the page or check if the server is running</div>
+            )}
+            {errorMessage?.includes('date') && (
+              <div>💡 Try selecting a different date or layer</div>
+            )}
+            {errorMessage?.includes('API key') && (
+              <div>💡 Check your NASA API key configuration</div>
+            )}
+            {errorMessage?.includes('Rate limit') && (
+              <div>💡 Wait a moment before trying again</div>
+            )}
+            {errorMessage?.includes('CORS') && (
+              <div>💡 Check server CORS settings</div>
+            )}
+          </div>
+          
+          {/* Technical details (collapsible) */}
+          {errorDetails && (
+            <details style={{ marginTop: '8px', fontSize: '11px', opacity: 0.8 }}>
+              <summary style={{ cursor: 'pointer', marginBottom: '4px' }}>Technical Details</summary>
+              <pre style={{ 
+                background: 'rgba(0, 0, 0, 0.3)', 
+                padding: '8px', 
+                borderRadius: '4px', 
+                overflow: 'auto',
+                maxHeight: '100px',
+                fontSize: '10px'
+              }}>
+                {errorDetails}
+              </pre>
+            </details>
+          )}
         </div>
       )}
     </div>
@@ -452,11 +704,3 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
 }
 
 export default Map2D
-
-
-
-
-
-
-
-

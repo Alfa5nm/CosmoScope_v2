@@ -151,8 +151,15 @@ export class SolarSystemScene {
     const spaceGeometry = new THREE.SphereGeometry(2000, 64, 64)
     const textureLoader = new THREE.TextureLoader()
     
-    // Load high-resolution space texture
-    const spaceTexture = textureLoader.load('https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=4096&h=4096&fit=crop&crop=center')
+    // Load high-resolution space texture with error handling
+    const spaceTexture = textureLoader.load(
+      'https://images.unsplash.com/photo-1502134249126-9f3755a50d78?w=4096&h=4096&fit=crop&crop=center',
+      undefined, // onLoad
+      undefined, // onProgress
+      (error) => {
+        console.warn('Failed to load space texture:', error)
+      }
+    )
     spaceTexture.wrapS = THREE.RepeatWrapping
     spaceTexture.wrapT = THREE.RepeatWrapping
     spaceTexture.repeat.set(1, 1)
@@ -284,7 +291,7 @@ export class SolarSystemScene {
         size: 0.3,
         rotationSpeed: 0.05, // Mercury: 58.6 Earth days
         orbitSpeed: 0.04, // Mercury: 88 Earth days
-        hasTexture: true
+        textureUrl: null
       },
       { 
         name: 'venus', 
@@ -294,7 +301,7 @@ export class SolarSystemScene {
         size: 0.5,
         rotationSpeed: -0.02, // Venus: retrograde rotation, 243 Earth days
         orbitSpeed: 0.015, // Venus: 225 Earth days
-        hasTexture: true
+        textureUrl: null
       },
       { 
         name: 'earth', 
@@ -304,7 +311,7 @@ export class SolarSystemScene {
         size: 0.6,
         rotationSpeed: 0.01, // Earth: 1 day
         orbitSpeed: 0.01, // Earth: 365 days
-        hasTexture: true
+        textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'
       },
       { 
         name: 'mars', 
@@ -314,7 +321,7 @@ export class SolarSystemScene {
         size: 0.5,
         rotationSpeed: 0.009, // Mars: 1.03 Earth days
         orbitSpeed: 0.008, // Mars: 687 Earth days
-        hasTexture: true
+        textureUrl: null
       },
       { 
         name: 'jupiter', 
@@ -324,7 +331,7 @@ export class SolarSystemScene {
         size: 1.2,
         rotationSpeed: 0.025, // Jupiter: 0.41 Earth days
         orbitSpeed: 0.004, // Jupiter: 12 Earth years
-        hasTexture: true
+        textureUrl: null
       },
       { 
         name: 'saturn', 
@@ -334,76 +341,50 @@ export class SolarSystemScene {
         size: 1.0,
         rotationSpeed: 0.022, // Saturn: 0.45 Earth days
         orbitSpeed: 0.003, // Saturn: 29 Earth years
-        hasTexture: true
+        textureUrl: null
       }
     ]
     
+    const textureLoader = new THREE.TextureLoader()
+
     planetData.forEach((planet) => {
       const geometry = new THREE.SphereGeometry(planet.size, 64, 64)
-      
-      // Create material with texture if available
-      let material: THREE.MeshPhongMaterial
-      
-      if (planet.hasTexture) {
-        // Load real planet textures from the internet
-        const textureLoader = new THREE.TextureLoader()
-        let textureUrl = ''
-        
-        switch (planet.name) {
-          case 'earth':
-            textureUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/earth_atmos_2048.jpg'
-            break
-          case 'mars':
-            textureUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mars_1k_color.jpg'
-            break
-          case 'jupiter':
-            textureUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/jupiter_1k_color.jpg'
-            break
-          case 'saturn':
-            textureUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn_1k_color.jpg'
-            break
-          case 'mercury':
-            textureUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/mercury_1k_color.jpg'
-            break
-          case 'venus':
-            textureUrl = 'https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/venus_1k_color.jpg'
-            break
-        }
-        
-        if (textureUrl) {
-          const texture = textureLoader.load(textureUrl)
-          texture.wrapS = THREE.RepeatWrapping
-          texture.wrapT = THREE.RepeatWrapping
-          
-          // Create realistic planet material with enhanced shader effects
-          material = new THREE.MeshPhongMaterial({ 
-            map: texture,
-            emissive: planet.emissive,
-            shininess: 30,
-            specular: 0x222222,
-            bumpScale: 0.1,
-            transparent: false
-          })
-        } else {
-          material = new THREE.MeshPhongMaterial({ 
-            color: planet.color,
-            emissive: planet.emissive,
-            shininess: 30,
-            specular: 0x222222,
-            transparent: false
-          })
-        }
-      } else {
-        material = new THREE.MeshPhongMaterial({ 
-          color: planet.color,
-          emissive: planet.emissive,
-          shininess: 30,
-          specular: 0x222222,
-          transparent: false
-        })
+
+      const baseMaterial = new THREE.MeshPhongMaterial({ 
+        color: planet.color,
+        emissive: planet.emissive,
+        shininess: 30,
+        specular: 0x222222,
+        transparent: false
+      })
+
+      const mesh = new THREE.Mesh(geometry, baseMaterial)
+
+      if (planet.textureUrl) {
+        textureLoader.load(
+          planet.textureUrl,
+          (texture) => {
+            texture.wrapS = THREE.RepeatWrapping
+            texture.wrapT = THREE.RepeatWrapping
+
+            mesh.material = new THREE.MeshPhongMaterial({
+              map: texture,
+              emissive: planet.emissive,
+              shininess: 30,
+              specular: 0x222222,
+              bumpScale: 0.1,
+              transparent: false
+            })
+          },
+          undefined,
+          (error) => {
+            console.warn(`Failed to load texture for ${planet.name}:`, error)
+          }
+        )
       }
-      
-      const mesh = new THREE.Mesh(geometry, material)
+
+      const meshRotateSpeed = planet.rotationSpeed
+
       mesh.position.x = planet.distance
       mesh.castShadow = true
       mesh.receiveShadow = true
@@ -461,8 +442,15 @@ export class SolarSystemScene {
     const moonGeometry = new THREE.SphereGeometry(0.2, 32, 32)
     const textureLoader = new THREE.TextureLoader()
     
-    // Load real Moon texture
-    const moonTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/moon_1024.jpg')
+    // Load real Moon texture with error handling
+    const moonTexture = textureLoader.load(
+      'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
+      undefined, // onLoad
+      undefined, // onProgress
+      (error) => {
+        console.warn('Failed to load moon texture:', error)
+      }
+    )
     
     const moonMaterial = new THREE.MeshPhongMaterial({ 
       map: moonTexture,
@@ -488,17 +476,11 @@ export class SolarSystemScene {
 
   private createSaturnRings(planet: THREE.Mesh): void {
     const ringGeometry = new THREE.RingGeometry(1.3, 2.0, 32)
-    const textureLoader = new THREE.TextureLoader()
-    
-    // Load real Saturn ring texture
-    const ringTexture = textureLoader.load('https://raw.githubusercontent.com/mrdoob/three.js/dev/examples/textures/planets/saturn_ring_alpha.png')
-    
     const ringMaterial = new THREE.MeshBasicMaterial({
-      map: ringTexture,
+      color: 0xd8c9a5,
       transparent: true,
-      opacity: 0.8,
-      side: THREE.DoubleSide,
-      alphaMap: ringTexture
+      opacity: 0.75,
+      side: THREE.DoubleSide
     })
     
     const rings = new THREE.Mesh(ringGeometry, ringMaterial)

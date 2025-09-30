@@ -318,7 +318,9 @@ export const rgbToHsl = (r: number, g: number, b: number): { h: number; s: numbe
 
   const max = Math.max(r, g, b)
   const min = Math.min(r, g, b)
-  let h = 0, s = 0, l = (max + min) / 2
+  let h = 0
+  let s = 0
+  const l = (max + min) / 2
 
   if (max !== min) {
     const d = max - min
@@ -338,3 +340,91 @@ export const rgbToHsl = (r: number, g: number, b: number): { h: number; s: numbe
     l: Math.round(l * 100)
   }
 }
+
+// Cosmic transition utilities - "Embiggen your eyes" effects
+export type CosmicTransitionType = 
+  | 'cosmic-blink' 
+  | 'embiggen-eyes' 
+  | 'cosmic-reveal' 
+  | 'stargate-open'
+
+export const triggerCosmicTransition = (
+  element: HTMLElement, 
+  type: CosmicTransitionType = 'cosmic-blink',
+  duration: number = 1000
+): Promise<void> => {
+  return new Promise((resolve) => {
+    // Remove any existing cosmic classes
+    const cosmicClasses = ['cosmic-blink', 'embiggen-eyes', 'cosmic-reveal', 'stargate-open']
+    cosmicClasses.forEach(cls => element.classList.remove(cls))
+    
+    // Add the new cosmic class
+    element.classList.add(type)
+    
+    // Resolve after animation duration
+    setTimeout(() => {
+      element.classList.remove(type)
+      resolve()
+    }, duration)
+  })
+}
+
+export const createCosmicOverlay = (type: CosmicTransitionType = 'cosmic-blink'): HTMLElement => {
+  const overlay = document.createElement('div')
+  overlay.className = 'cosmic-overlay'
+  overlay.style.animation = `${type} 0.8s ease-in-out`
+  document.body.appendChild(overlay)
+  
+  // Add global opacity reduction to all elements during transition
+  const allElements = document.querySelectorAll('*')
+  allElements.forEach(el => {
+    if (el !== overlay) {
+      (el as HTMLElement).style.transition = 'opacity 0.3s ease'
+      ;(el as HTMLElement).style.opacity = '0.3'
+    }
+  })
+  
+  // Remove overlay and restore opacity after animation
+  setTimeout(() => {
+    if (overlay.parentNode) {
+      overlay.parentNode.removeChild(overlay)
+    }
+    
+    // Restore opacity to all elements
+    allElements.forEach(el => {
+      if (el !== overlay) {
+        ;(el as HTMLElement).style.opacity = '1'
+      }
+    })
+  }, 800)
+  
+  return overlay
+}
+
+export const cosmicTransition = async (
+  element: HTMLElement,
+  type: CosmicTransitionType = 'cosmic-blink',
+  showOverlay: boolean = false
+): Promise<void> => {
+  if (showOverlay) {
+    createCosmicOverlay(type)
+  }
+  
+  await triggerCosmicTransition(element, type)
+}
+
+// React hook for cosmic transitions
+export const useCosmicTransition = () => {
+  const triggerTransition = async (
+    element: HTMLElement | null,
+    type: CosmicTransitionType = 'cosmic-blink',
+    showOverlay: boolean = false
+  ) => {
+    if (!element) return
+    
+    await cosmicTransition(element, type, showOverlay)
+  }
+  
+  return { triggerTransition }
+}
+

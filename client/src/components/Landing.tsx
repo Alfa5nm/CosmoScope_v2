@@ -2,14 +2,18 @@ import React, { useState, useEffect, useRef } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/ui/theme'
 import { useAudio } from '../lib/audio/AudioContext'
+import { useCosmicTransition } from '../lib/utils'
 
 const Landing: React.FC = () => {
   const navigate = useNavigate()
   const { theme } = useTheme()
   const { playSound } = useAudio()
+  const { triggerTransition } = useCosmicTransition()
   const [particles, setParticles] = useState<Array<{ id: number; x: number; y: number; speed: number }>>([])
   const [hubblePosition, setHubblePosition] = useState(-100)
+  const [isTransitioning, setIsTransitioning] = useState(false)
   const canvasRef = useRef<HTMLCanvasElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
     // Create particle system
@@ -80,9 +84,21 @@ const Landing: React.FC = () => {
     }
   }, [])
 
-  const handleExploreClick = () => {
+  const handleExploreClick = async () => {
+    if (isTransitioning) return
+    
+    setIsTransitioning(true)
     playSound('click')
-    navigate('/solar-system')
+    
+    // Trigger cosmic transition on the button
+    if (buttonRef.current) {
+      await triggerTransition(buttonRef.current, 'stargate-open', true)
+    }
+    
+    // Navigate after transition
+    setTimeout(() => {
+      navigate('/solar-system')
+    }, 1400) // Match the stargate-open animation duration
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -190,8 +206,10 @@ const Landing: React.FC = () => {
 
         {/* Explore Button */}
         <button
+          ref={buttonRef}
           onClick={handleExploreClick}
           onKeyDown={handleKeyPress}
+          disabled={isTransitioning}
           style={{
             background: 'transparent',
             border: `2px solid ${theme.colors.primary}`,
@@ -201,10 +219,11 @@ const Landing: React.FC = () => {
             fontFamily: theme.typography.fontFamily,
             textTransform: 'uppercase',
             letterSpacing: '2px',
-            cursor: 'pointer',
+            cursor: isTransitioning ? 'not-allowed' : 'pointer',
             transition: 'all 0.3s ease',
             boxShadow: theme.effects.glow,
-            borderRadius: '4px'
+            borderRadius: '4px',
+            opacity: isTransitioning ? 0.7 : 1
           }}
           onMouseEnter={(e) => {
             e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
@@ -218,7 +237,7 @@ const Landing: React.FC = () => {
             e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
-          EXPLORE
+          {isTransitioning ? '🌌 EMBIGGENING...' : '🚀 EXPLORE THE COSMOS'}
         </button>
       </div>
 

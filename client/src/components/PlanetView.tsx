@@ -2,11 +2,14 @@ import React, { useEffect, useState } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/ui/theme'
 import { useAudio } from '../lib/audio/AudioContext'
+import { useCosmicTransition } from '../lib/utils'
 import { GameState } from '../App'
 import Map2D from './Map2D'
 import Timeline from './Timeline'
+import { getPlanetConfig, type LayerId, type PlanetId } from '../config/planetLayers'
 import LabelsPanel from './LabelsPanel'
 import Toast from './Toast'
+import { useViewStore } from '../store/viewStore'
 
 interface PlanetViewProps {
   gameState: GameState
@@ -18,11 +21,21 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
   const navigate = useNavigate()
   const { theme } = useTheme()
   const { playSound } = useAudio()
-  const [currentDate, setCurrentDate] = useState(gameState.currentDate)
-  const [selectedLayer, setSelectedLayer] = useState<string>('base')
+  const { triggerTransition } = useCosmicTransition()
+  const currentDate = useViewStore(state => state.date)
+  const selectedLayer = useViewStore(state => state.layerId)
+  const storePlanetId = useViewStore(state => state.planetId)
+  const setStoreLayer = useViewStore(state => state.setLayer)
+  const setStoreDate = useViewStore(state => state.setDate)
+  const setStorePlanet = useViewStore(state => state.setPlanet)
   const [showLabelsPanel, setShowLabelsPanel] = useState(false)
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null)
-  const [isTransitioning, setIsTransitioning] = useState(true)
+  const [isTransitioning, setIsTransitioning] = useState(false)
+
+  const knownPlanets: PlanetId[] = ['earth', 'mars', 'moon']
+  const resolvedPlanetId: PlanetId | null =
+    planetId && knownPlanets.includes(planetId as PlanetId) ? (planetId as PlanetId) : null
+  const planetLayers = resolvedPlanetId ? getPlanetConfig(resolvedPlanetId).layers : []
 
   useEffect(() => {
     // Simulate transition from 3D to 2D
@@ -34,28 +47,61 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
   }, [])
 
   useEffect(() => {
-    // Update game state with current planet
-    setGameState(prev => ({
-      ...prev,
-      currentPlanet: planetId || null
-    }))
-  }, [planetId, setGameState])
+    if (storePlanetId !== resolvedPlanetId) {
+      setStorePlanet(resolvedPlanetId)
+    }
+  }, [resolvedPlanetId, storePlanetId, setStorePlanet])
+
+  useEffect(() => {
+    const nextPlanet = planetId ?? null
+
+    setGameState(prev => {
+      if (prev.currentPlanet === nextPlanet && prev.currentDate === currentDate) {
+        return prev
+      }
+
+      return {
+        ...prev,
+        currentPlanet: nextPlanet,
+        currentDate
+      }
+    })
+  }, [planetId, currentDate, setGameState])
 
   const handleDateChange = (date: string) => {
-    setCurrentDate(date)
+    setStoreDate(date)
     setGameState(prev => ({ ...prev, currentDate: date }))
     playSound('click')
   }
 
   const handleLayerChange = (layerId: string) => {
-    setSelectedLayer(layerId)
+    const fallbackLayer = resolvedPlanetId ? getPlanetConfig(resolvedPlanetId).defaultLayer : 'base'
+    const allowedLayer = planetLayers.find(layer => layer.id === layerId)?.id ?? fallbackLayer
+    setStoreLayer(allowedLayer)
+    const layerMeta = planetLayers.find(layer => layer.id === allowedLayer)
     playSound('click')
-    setToast({ message: `Switched to ${layerId} layer`, type: 'info' })
+    setToast({ message: `Switched to ${layerMeta?.name ?? allowedLayer} layer`, type: 'info' })
   }
 
-  const handleBackToSolarSystem = () => {
+  const handleBackToSolarSystem = async () => {
+    if (isTransitioning) return
+    
+    setIsTransitioning(true)
     playSound('click')
-    navigate('/solar-system')
+    
+    // Show transition effect
+    setToast({ message: '🌌 RETURNING TO SOLAR SYSTEM...', type: 'info' })
+    
+    // Trigger cosmic transition on the entire container
+    const container = document.querySelector('.planet-view-container')
+    if (container) {
+      await triggerTransition(container as HTMLElement, 'cosmic-blink', true)
+    }
+    
+    // Navigate after transition
+    setTimeout(() => {
+      navigate('/solar-system')
+    }, 800) // Match the cosmic-blink animation duration
   }
 
   const handleLabelCreate = (label: any) => {
@@ -94,12 +140,14 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
   }
 
   return (
-    <div style={{
-      width: '100vw',
-      height: '100vh',
-      position: 'relative',
-      background: theme.colors.background
-    }}>
+    <div 
+      className="planet-view-container"
+      style={{
+        width: '100vw',
+        height: '100vh',
+        position: 'relative',
+        background: theme.colors.background
+      }}>
       {/* Transition Effect */}
       {isTransitioning && (
         <div style={{
@@ -165,6 +213,7 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
         currentDate={currentDate}
         onDateChange={handleDateChange}
         planet={planetId}
+        layer={selectedLayer}
       />
 
       {/* Layer Switcher */}
@@ -175,7 +224,7 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
         zIndex: 20
       }}>
         <LayerSwitcher
-          planet={planetId}
+          layers={planetLayers}
           selectedLayer={selectedLayer}
           onLayerChange={handleLayerChange}
         />
@@ -278,20 +327,17 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
 }
 
 const LayerSwitcher: React.FC<{
-  planet: string
+  layers: Array<{ id: LayerId; name: string; description: string }>
   selectedLayer: string
   onLayerChange: (layerId: string) => void
-}> = ({ selectedLayer, onLayerChange }) => {
+}> = ({ layers, selectedLayer, onLayerChange }) => {
   const { theme } = useTheme()
   const { playSound } = useAudio()
   const [isOpen, setIsOpen] = useState(false)
 
-  const layers = [
-    { id: 'base', name: 'Base Map', description: 'Standard imagery' },
-    { id: 'thermal', name: 'Thermal', description: 'Temperature data' },
-    { id: 'elevation', name: 'Elevation', description: 'Height data' },
-    { id: 'night', name: 'Night Lights', description: 'City lights at night' }
-  ]
+  if (layers.length === 0) {
+    return null
+  }
 
   return (
     <div style={{ position: 'relative' }}>
@@ -318,7 +364,7 @@ const LayerSwitcher: React.FC<{
       >
         Layers
         <span style={{ fontSize: theme.typography.fontSize.sm }}>
-          {isOpen ? '▲' : '▼'}
+          {isOpen ? 'v' : '^'}
         </span>
       </button>
 
@@ -372,8 +418,9 @@ const LayerSwitcher: React.FC<{
                 {layer.name}
               </div>
               <div style={{
+                color: theme.colors.textSecondary,
                 fontSize: theme.typography.fontSize.sm,
-                opacity: 0.7
+                opacity: 0.8
               }}>
                 {layer.description}
               </div>
@@ -386,3 +433,4 @@ const LayerSwitcher: React.FC<{
 }
 
 export default PlanetView
+

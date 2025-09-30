@@ -6,7 +6,7 @@
     "install:all": "npm install && cd client && npm install && cd ../server && npm install",
     "dev": "concurrently \"cd client && npm run dev\" \"cd server && npm run dev\"",
     "dev:full": "concurrently \"cd client && npm run dev\" \"cd server && npm run dev\" \"npm run cantaloupe\" \"npm run iiif\"",
-    "cantaloupe": "\"C:\\Program Files\\Eclipse Adoptium\\jdk-17.0.16.8-hotspot\\bin\\java.exe\" -Dcantaloupe.config=./cantaloupe.properties -Xmx2g -jar D:/Softwares/cantaloupe-5.0.7_1/cantaloupe-5.0.7/cantaloupe-5.0.7.jar",
+    "cantaloupe": "node ./scripts/start-cantaloupe.mjs",
     "iiif": "cd server && node iiif-server.js",
     "build": "cd client && npm run build && cd ../server && npm run build",
     "start": "concurrently \"cd client && npm run preview\" \"cd server && npm run start\"",
@@ -27,5 +27,9 @@
     "typescript"
   ],
   "author": "NASA Space Apps 2025 Team",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "dotenv": "^17.2.3",
+    "zustand": "^5.0.8"
+  }
 }

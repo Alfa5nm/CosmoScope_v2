@@ -1,3 +1,5 @@
+import { layerSupportsTime, type PlanetId, type LayerId } from '../config/planetLayers'
+
 export interface DatasetLayer {
   id: string
   title: string
@@ -19,6 +21,8 @@ export interface DatasetLayer {
   }
 }
 
+const supportsTime = (planet: PlanetId, layerId: LayerId) => layerSupportsTime(planet, layerId)
+
 export const datasets: Record<string, DatasetLayer[]> = {
   earth: [
     {
@@ -27,8 +31,8 @@ export const datasets: Record<string, DatasetLayer[]> = {
       type: 'base',
       url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
       layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
-      tileMatrixSet: 'EPSG4326_500m',
-      hasTime: true,
+      tileMatrixSet: 'EPSG4326_250m',
+      hasTime: supportsTime('earth', 'base'),
       attribution: 'NASA Earth Observatory',
       minZoom: 0,
       maxZoom: 8,
@@ -48,7 +52,7 @@ export const datasets: Record<string, DatasetLayer[]> = {
       url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
       layer: 'VIIRS_CityLights_2012',
       tileMatrixSet: 'EPSG4326_500m',
-      hasTime: false,
+      hasTime: supportsTime('earth', 'night'),
       attribution: 'NASA Earth Observatory',
       minZoom: 0,
       maxZoom: 8,
@@ -63,8 +67,8 @@ export const datasets: Record<string, DatasetLayer[]> = {
       type: 'thermal',
       url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
       layer: 'MODIS_Terra_Land_Surface_Temperature_Day',
-      tileMatrixSet: 'EPSG4326_500m',
-      hasTime: true,
+      tileMatrixSet: 'EPSG4326_2km',
+      hasTime: supportsTime('earth', 'thermal'),
       attribution: 'NASA Earth Observatory',
       minZoom: 0,
       maxZoom: 8,
@@ -84,7 +88,7 @@ export const datasets: Record<string, DatasetLayer[]> = {
       url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
       layer: 'SRTM_DEM',
       tileMatrixSet: 'EPSG4326_500m',
-      hasTime: false,
+      hasTime: supportsTime('earth', 'elevation'),
       attribution: 'NASA Earth Observatory',
       minZoom: 0,
       maxZoom: 8,
@@ -99,26 +103,22 @@ export const datasets: Record<string, DatasetLayer[]> = {
       id: 'moon-lroc',
       title: 'LROC WAC',
       type: 'base',
-      url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
-      layer: 'LRO_LROC_WAC_Global_303m',
-      tileMatrixSet: 'EPSG4326_500m',
-      hasTime: false,
+      url: 'https://trek.nasa.gov/moon/trekarcgis/rest/services/LRO_WAC_Mosaic_Global_303ppd_v02/ImageServer',
+      hasTime: supportsTime('moon', 'base'),
       attribution: 'NASA/GSFC/Arizona State University',
       minZoom: 0,
       maxZoom: 10,
       opacity: 1,
       visible: true,
       planet: 'moon',
-      description: 'Lunar Reconnaissance Orbiter Camera Wide Angle Camera'
+      description: 'Global mosaic from Lunar Reconnaissance Orbiter WAC'
     },
     {
       id: 'moon-elevation',
       title: 'Lunar Elevation',
       type: 'elevation',
-      url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
-      layer: 'LRO_LOLA_Global_LDEM_118m',
-      tileMatrixSet: 'EPSG4326_500m',
-      hasTime: false,
+      url: 'https://trek.nasa.gov/moon/trekarcgis/rest/services/LRO_LOLA_DEM_Global_256ppd_v06/ImageServer',
+      hasTime: supportsTime('moon', 'elevation'),
       attribution: 'NASA/GSFC',
       minZoom: 0,
       maxZoom: 10,
@@ -133,33 +133,57 @@ export const datasets: Record<string, DatasetLayer[]> = {
       id: 'mars-ctx',
       title: 'Mars CTX',
       type: 'base',
-      url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
-      layer: 'MRO_CTX_Mosaic_Global_92m',
-      tileMatrixSet: 'EPSG4326_500m',
-      hasTime: false,
+      url: 'https://trek.nasa.gov/mars/trekarcgis/rest/services/Mars_Viking_MDIM21_ClrMosaic_global_232m/ImageServer',
+      hasTime: supportsTime('mars', 'base'),
       attribution: 'NASA/JPL-Caltech/MSSS',
       minZoom: 0,
-      maxZoom: 8,
+      maxZoom: 9,
       opacity: 1,
       visible: true,
       planet: 'mars',
-      description: 'Mars Reconnaissance Orbiter Context Camera'
+      description: 'Global mosaic from Viking and MRO observations'
+    },
+    {
+      id: 'mars-thermal',
+      title: 'MOLA Colorized',
+      type: 'thermal',
+      url: 'https://trek.nasa.gov/mars/trekarcgis/rest/services/Mars_MGS_MOLA_Colorized_DEM_Global_463m/ImageServer',
+      hasTime: supportsTime('mars', 'thermal'),
+      attribution: 'NASA/GSFC',
+      minZoom: 0,
+      maxZoom: 8,
+      opacity: 0.8,
+      visible: false,
+      planet: 'mars',
+      description: 'Colorized Mars Orbiter Laser Altimeter data'
     },
     {
       id: 'mars-elevation',
       title: 'Mars Elevation',
       type: 'elevation',
-      url: 'https://map1.vis.earthdata.nasa.gov/wmts-geo/wmts.cgi',
-      layer: 'MGS_MOLA_BlendedShade_Global_128ppd',
-      tileMatrixSet: 'EPSG4326_500m',
-      hasTime: false,
+      url: 'https://trek.nasa.gov/mars/trekarcgis/rest/services/mola128_mola64_merge_90Nto90S_SimpleC_clon0/ImageServer',
+      hasTime: supportsTime('mars', 'elevation'),
       attribution: 'NASA/GSFC',
       minZoom: 0,
-      maxZoom: 8,
+      maxZoom: 9,
       opacity: 0.6,
       visible: false,
       planet: 'mars',
-      description: 'Mars Global Surveyor Mars Orbiter Laser Altimeter'
+      description: 'Merged MOLA global elevation model'
+    },
+    {
+      id: 'mars-night',
+      title: 'Topography Shading',
+      type: 'night',
+      url: 'https://trek.nasa.gov/mars/trekarcgis/rest/services/Mars_MGS_MOLA_Colorized_DEM_Global_463m/ImageServer',
+      hasTime: supportsTime('mars', 'night'),
+      attribution: 'NASA/GSFC',
+      minZoom: 0,
+      maxZoom: 8,
+      opacity: 0.7,
+      visible: false,
+      planet: 'mars',
+      description: 'Alternate shaded relief based on MOLA data'
     }
   ]
 }
@@ -184,7 +208,7 @@ export const getLayerById = (planet: string, layerId: string): DatasetLayer | un
 }
 
 export const buildTileUrl = (layer: DatasetLayer, x: number, y: number, z: number, date?: string): string => {
-  let url = layer.url
+  const url = layer.url
   
   // Add standard WMTS parameters
   const params = new URLSearchParams({
@@ -226,3 +250,4 @@ export const getAvailableDates = (layer: DatasetLayer): string[] => {
   
   return dates
 }
+
