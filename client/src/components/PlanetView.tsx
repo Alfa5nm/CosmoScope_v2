@@ -34,7 +34,7 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
   const { theme } = useTheme()
   const { playSound } = useAudio()
   const { triggerTransition } = useCosmicTransition()
-  const { updateProgress } = useObjectives()
+  const { } = useObjectives()
   const { features } = useSettings()
   const currentDate = useViewStore(state => state.date)
   const selectedLayer = useViewStore(state => state.layerId)
@@ -596,9 +596,7 @@ const LayerSwitcher: React.FC<{
     if (isOpen && buttonRef.current) {
       const buttonRect = buttonRef.current.getBoundingClientRect()
       const viewportHeight = window.innerHeight
-      const viewportWidth = window.innerWidth
       const dropdownHeight = layers.length * 80 + 20 // Approximate height
-      const dropdownWidth = 300 // Max width
       
       // If there's not enough space below, show above
       if (buttonRect.bottom + dropdownHeight > viewportHeight - 20) {

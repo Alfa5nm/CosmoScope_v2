@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
-import { objectiveManager, Objective, ObjectiveProgress } from '../objectiveSystem'
+import { objectiveManager, ObjectiveProgress } from '../objectiveSystem'
 
 export const useObjectives = () => {
   const [progress, setProgress] = useState<ObjectiveProgress>(objectiveManager.getObjectiveProgress())

@@ -49,7 +49,8 @@ export const usePointsStore = create<PointsState>((set) => ({
   },
 
   spendPoints: (points: number, reason: string) => {
-    return set((state) => {
+    let success = false;
+    set((state) => {
       if (state.totalPoints >= points) {
         const event: PointsEvent = {
           id: Math.random().toString(36).substr(2, 9),
@@ -58,6 +59,7 @@ export const usePointsStore = create<PointsState>((set) => ({
           timestamp: Date.now()
         };
 
+        success = true;
         return {
           totalPoints: state.totalPoints - points,
           pointsHistory: [...state.pointsHistory, event],
@@ -66,6 +68,7 @@ export const usePointsStore = create<PointsState>((set) => ({
       }
       return state; // Return unchanged state if insufficient points
     });
+    return success;
   },
 
   clearRecentEvents: () => {

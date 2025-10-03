@@ -44,10 +44,10 @@ const PointsDisplay: React.FC = () => {
       // Flash effect when points change
       const flashElement = document.querySelector('.points-display');
       if (flashElement) {
-        flashElement.style.animation = 'pointsFlash 0.5s ease-in-out';
+        (flashElement as HTMLElement).style.animation = 'pointsFlash 0.5s ease-in-out';
         setTimeout(() => {
           if (flashElement) {
-            flashElement.style.animation = '';
+            (flashElement as HTMLElement).style.animation = '';
           }
         }, 500);
       }

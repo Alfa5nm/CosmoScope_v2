@@ -18,13 +18,13 @@ interface SolarSystemProps {
   setGameState: React.Dispatch<React.SetStateAction<GameState>>
 }
 
-const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) => {
+const SolarSystem: React.FC<SolarSystemProps> = ({ setGameState }) => {
   const navigate = useNavigate()
   const { theme } = useTheme()
   const { playSound } = useAudio()
   const { triggerTransition } = useCosmicTransition()
   const { awardPoints } = usePoints()
-  const { updateProgress, visitPlanet, completeObjective } = useObjectives()
+  const { updateProgress, visitPlanet } = useObjectives()
   const { visual, performance } = useSettings()
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<any>(null) // Will be SolarSystemScene after loading

@@ -92,7 +92,7 @@ export const useSettingsStore = create<SettingsState>()(
           features: { ...state.features, ...settings }
         })),
 
-      applyShopItemEffect: (itemId: string, effect: any) => {
+      applyShopItemEffect: (_itemId: string, effect: any) => {
         const { type, value } = effect;
         
         switch (type) {
