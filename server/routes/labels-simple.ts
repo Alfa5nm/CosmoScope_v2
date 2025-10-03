@@ -12,7 +12,22 @@ const router = express.Router()
 
 // Initialize database
 const dbPath = process.env.DATABASE_PATH || join(__dirname, '../db.sqlite')
-const db = new sqlite3.Database(dbPath)
+
+// Ensure the directory exists
+import fs from 'fs'
+const dbDir = dirname(dbPath)
+if (!fs.existsSync(dbDir)) {
+  fs.mkdirSync(dbDir, { recursive: true })
+}
+
+const db = new sqlite3.Database(dbPath, (err) => {
+  if (err) {
+    console.error('Database connection error:', err)
+    console.error('Database path:', dbPath)
+  } else {
+    console.log('Database connected successfully at:', dbPath)
+  }
+})
 
 const toStringParam = (value: unknown): string | undefined => {
   if (typeof value === 'string') {

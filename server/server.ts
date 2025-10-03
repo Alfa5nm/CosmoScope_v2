@@ -30,7 +30,7 @@ const defaultConfig: ServerConfig = {
   NASA_API_KEY: process.env.NASA_API_KEY ?? 'SET_ME',
   PORT: Number(process.env.PORT ?? 3000), // Railway default port
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
-  DATABASE_PATH: process.env.DATABASE_PATH ?? './db.sqlite'
+  DATABASE_PATH: process.env.DATABASE_PATH ?? join(process.cwd(), 'db.sqlite')
 }
 
 const loadConfig = (): ServerConfig => {

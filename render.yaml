@@ -15,6 +15,6 @@ services:
       - key: ALLOWED_ORIGINS
         value: https://cosmoscope.onrender.com
       - key: DATABASE_PATH
-        value: /opt/render/project/src/db.sqlite
+        value: /opt/render/project/db.sqlite
       - key: TILE_CACHE_ENABLED
         value: false
