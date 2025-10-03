@@ -98,7 +98,7 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
         
         // Start continuous ambient music
         const startAmbientMusic = () => {
-          const audio = new Audio('/src/assets/audio/ambient.mp3')
+          const audio = new Audio('/audio/ambient.mp3')
           audio.loop = true
           audio.volume = 0.3
           audio.play().catch(console.warn)

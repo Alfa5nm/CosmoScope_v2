@@ -612,7 +612,7 @@ const Landing: React.FC = () => {
 
           height: '100%',
 
-          backgroundImage: 'url("/src/assets/images/background space.png")',
+          backgroundImage: 'url("/images/background-space.png")',
 
           backgroundSize: 'cover',
 
@@ -1110,7 +1110,7 @@ const Landing: React.FC = () => {
 
             height: '40px',
 
-            backgroundImage: 'url("/src/assets/images/space-station-with-solar-panel-open-removebg-preview.png")',
+            backgroundImage: 'url("/images/space-station-with-solar-panel-open-removebg-preview.png")',
 
             backgroundSize: 'contain',
 
