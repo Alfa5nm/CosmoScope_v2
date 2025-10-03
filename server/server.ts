@@ -28,7 +28,7 @@ const __dirname = dirname(__filename)
 
 const defaultConfig: ServerConfig = {
   NASA_API_KEY: process.env.NASA_API_KEY ?? 'SET_ME',
-  PORT: Number(process.env.PORT ?? 3000), // Railway default port
+  PORT: Number(process.env.PORT ?? 3000), // Default port, Render will override with 10000
   ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
   DATABASE_PATH: process.env.DATABASE_PATH ?? join(process.cwd(), 'db.sqlite')
 }
@@ -134,6 +134,8 @@ const possiblePaths = [
   join(process.cwd(), 'client/dist'),          // Production: /app -> client/dist
   join(process.cwd(), 'dist'),                 // Alternative: /app -> dist
   join(__dirname, '../../client/dist'),        // Alternative: server/dist -> ../../client/dist
+  join(process.cwd(), 'server/client/dist'),   // Render: /app/server/client/dist
+  join(__dirname, 'client/dist'),              // Render: server/dist/client/dist
 ]
 
 let staticPath: string = possiblePaths[0]!
@@ -148,8 +150,19 @@ console.log('Serving static files from:', staticPath)
 console.log('Static path exists:', fs.existsSync(staticPath))
 if (fs.existsSync(staticPath)) {
   console.log('Static directory contents:', fs.readdirSync(staticPath))
+} else {
+  console.error('No valid static path found! Tried:', possiblePaths)
+  console.log('Current working directory:', process.cwd())
+  console.log('__dirname:', __dirname)
+  console.log('Directory contents:', fs.readdirSync(process.cwd()))
 }
-app.use(express.static(staticPath))
+
+// Only serve static files if we found a valid path
+if (fs.existsSync(staticPath)) {
+  app.use(express.static(staticPath))
+} else {
+  console.error('WARNING: No static files directory found! Client will not load.')
+}
 
 // API Routes
 app.use('/api', nasaRoutes)
@@ -214,6 +227,8 @@ app.get('*', (req, res) => {
     join(__dirname, '../client/dist/index.html'),
     join(process.cwd(), 'client/dist/index.html'),
     join(process.cwd(), 'dist/index.html'),
+    join(process.cwd(), 'server/client/dist/index.html'),   // Render: /app/server/client/dist/index.html
+    join(__dirname, 'client/dist/index.html'),              // Render: server/dist/client/dist/index.html
   ]
   
   let indexPath: string = possibleIndexPaths[0]!
@@ -235,7 +250,33 @@ app.get('*', (req, res) => {
     if (fs.existsSync(staticPath)) {
       console.error('Static directory contents:', fs.readdirSync(staticPath))
     }
-    return res.status(404).json({ error: 'Client build not found', paths: possibleIndexPaths })
+    
+    // Return a simple HTML page instead of JSON for better user experience
+    return res.status(404).send(`
+      <!DOCTYPE html>
+      <html>
+        <head>
+          <title>CosmoScope - Loading...</title>
+          <style>
+            body { 
+              font-family: Arial, sans-serif; 
+              background: #0a0a0a; 
+              color: #fff; 
+              text-align: center; 
+              padding: 50px;
+            }
+            .error { color: #ff6b6b; }
+            .info { color: #4ecdc4; }
+          </style>
+        </head>
+        <body>
+          <h1>CosmoScope</h1>
+          <p class="error">Client build not found</p>
+          <p class="info">Please check the deployment logs for more details</p>
+          <p>Paths tried: ${possibleIndexPaths.join(', ')}</p>
+        </body>
+      </html>
+    `)
   }
   
   return res.sendFile(indexPath)
