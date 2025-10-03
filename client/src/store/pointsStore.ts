@@ -14,6 +14,7 @@ interface PointsState {
   pointsHistory: PointsEvent[];
   recentEvents: PointsEvent[];
   addPoints: (points: number, reason: string, x?: number, y?: number) => void;
+  spendPoints: (points: number, reason: string) => boolean;
   clearRecentEvents: () => void;
   resetPoints: () => void;
 }
@@ -45,6 +46,26 @@ export const usePointsStore = create<PointsState>((set) => ({
         recentEvents: state.recentEvents.filter(e => e.id !== event.id)
       }));
     }, 3000);
+  },
+
+  spendPoints: (points: number, reason: string) => {
+    return set((state) => {
+      if (state.totalPoints >= points) {
+        const event: PointsEvent = {
+          id: Math.random().toString(36).substr(2, 9),
+          points: -points, // Negative points for spending
+          reason,
+          timestamp: Date.now()
+        };
+
+        return {
+          totalPoints: state.totalPoints - points,
+          pointsHistory: [...state.pointsHistory, event],
+          recentEvents: [...state.recentEvents, event].slice(-5)
+        };
+      }
+      return state; // Return unchanged state if insufficient points
+    });
   },
 
   clearRecentEvents: () => {

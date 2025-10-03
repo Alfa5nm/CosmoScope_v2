@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { loadMapLibre, markLibraryLoaded } from '../lib/dynamicImports'
 import { getLayerZoomLimits, layerSupportsTime, getPlanetConfig, type PlanetId, type LayerId } from '../config/planetLayers'
 import { useCountryStore } from '../store/countryStore'
+import { useObjectives } from '../lib/hooks/useObjectives'
 
 const envApiUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE_URL = envApiUrl && envApiUrl.length > 0 ? envApiUrl.replace(/\/+$/, '') : ''
@@ -163,6 +164,7 @@ const Map2D: React.FC<Map2DProps> = ({
   onCountryClick,
   onPOIClick
 }) => {
+  const { updateProgress } = useObjectives()
   const mapContainer = mapContainerRef || useRef<HTMLDivElement>(null)
   const map = mapInstanceRef || useRef<any>(null) // Will be maplibregl.Map after loading
   const apolloMarkersRef = useRef<any[]>([])
@@ -383,6 +385,12 @@ const Map2D: React.FC<Map2DProps> = ({
       hideError()
       addApolloMarkers()
       addUserLabels()
+    })
+
+    // Add click handler for exploration tracking
+    map.current.on('click', () => {
+      // Track exploration progress
+      updateProgress('discovery-002', 1)
     })
 
     const showError = (message?: string, details?: any, type: 'error' | 'warning' | 'info' = 'error') => {

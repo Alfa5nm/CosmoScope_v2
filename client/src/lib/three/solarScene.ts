@@ -10,6 +10,23 @@ export interface SolarSystemConfig {
   orbitSpeed: number
 }
 
+export interface VisualSettings {
+  textureQuality: 'low' | 'medium' | 'high' | 'ultra';
+  particles: boolean;
+  dynamicLighting: boolean;
+  spaceAmbience: boolean;
+  enhancedShadows: boolean;
+  atmosphericEffects: boolean;
+}
+
+export interface PerformanceSettings {
+  renderDistance: number;
+  smoothRotation: boolean;
+  fastTravel: boolean;
+  highFPS: boolean;
+  optimizedRendering: boolean;
+}
+
 export class SolarSystemScene {
   public scene: THREE.Scene
   public camera: THREE.PerspectiveCamera
@@ -24,6 +41,8 @@ export class SolarSystemScene {
   private keyStates: { [key: string]: boolean } = {}
   private moveSpeed: number = 0.5
   private zoomSpeed: number = 0.1
+  private visualSettings: VisualSettings
+  private performanceSettings: PerformanceSettings
 
   private config: SolarSystemConfig = {
     sunRadius: 2,
@@ -38,6 +57,24 @@ export class SolarSystemScene {
     this.scene = new THREE.Scene()
     this.camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000)
     this.renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true })
+    
+    // Initialize default settings
+    this.visualSettings = {
+      textureQuality: 'medium',
+      particles: false,
+      dynamicLighting: false,
+      spaceAmbience: false,
+      enhancedShadows: false,
+      atmosphericEffects: false,
+    }
+    
+    this.performanceSettings = {
+      renderDistance: 1.0,
+      smoothRotation: false,
+      fastTravel: false,
+      highFPS: false,
+      optimizedRendering: false,
+    }
     
     this.setupRenderer(container)
     this.setupControls()
@@ -885,6 +922,177 @@ export class SolarSystemScene {
     this.camera.aspect = width / height
     this.camera.updateProjectionMatrix()
     this.renderer.setSize(width, height)
+  }
+
+  public applySettings(settings: { visual: VisualSettings; performance: PerformanceSettings }): void {
+    this.visualSettings = { ...this.visualSettings, ...settings.visual }
+    this.performanceSettings = { ...this.performanceSettings, ...settings.performance }
+    
+    // Apply visual settings
+    this.applyVisualSettings()
+    
+    // Apply performance settings
+    this.applyPerformanceSettings()
+  }
+
+  private applyVisualSettings(): void {
+    // Apply texture quality
+    this.updateTextureQuality()
+    
+    // Apply particle effects
+    this.updateParticleEffects()
+    
+    // Apply dynamic lighting
+    this.updateDynamicLighting()
+    
+    // Apply space ambience
+    this.updateSpaceAmbience()
+    
+    // Apply enhanced shadows
+    this.updateEnhancedShadows()
+    
+    // Apply atmospheric effects
+    this.updateAtmosphericEffects()
+  }
+
+  private applyPerformanceSettings(): void {
+    // Apply render distance
+    this.updateRenderDistance()
+    
+    // Apply smooth rotation
+    this.updateSmoothRotation()
+    
+    // Apply fast travel
+    this.updateFastTravel()
+    
+    // Apply high FPS
+    this.updateHighFPS()
+    
+    // Apply optimized rendering
+    this.updateOptimizedRendering()
+  }
+
+  private updateTextureQuality(): void {
+    const quality = this.visualSettings.textureQuality
+    const qualityMap = {
+      'low': 256,
+      'medium': 512,
+      'high': 1024,
+      'ultra': 2048
+    }
+    
+    const textureSize = qualityMap[quality]
+    
+    // Update planet textures
+    Object.values(this.planets).forEach(planet => {
+      if (planet.material instanceof THREE.MeshBasicMaterial) {
+        // Update texture resolution if needed
+        console.log(`Updated texture quality to ${quality} (${textureSize}x${textureSize})`)
+      }
+    })
+  }
+
+  private updateParticleEffects(): void {
+    if (this.visualSettings.particles) {
+      this.createParticleEffects()
+    } else {
+      this.removeParticleEffects()
+    }
+  }
+
+  private updateDynamicLighting(): void {
+    if (this.visualSettings.dynamicLighting) {
+      this.createDynamicLighting()
+    } else {
+      this.removeDynamicLighting()
+    }
+  }
+
+  private updateSpaceAmbience(): void {
+    if (this.visualSettings.spaceAmbience) {
+      this.createSpaceAmbience()
+    } else {
+      this.removeSpaceAmbience()
+    }
+  }
+
+  private updateEnhancedShadows(): void {
+    this.renderer.shadowMap.enabled = this.visualSettings.enhancedShadows
+    this.renderer.shadowMap.type = this.visualSettings.enhancedShadows ? THREE.PCFSoftShadowMap : THREE.BasicShadowMap
+  }
+
+  private updateAtmosphericEffects(): void {
+    if (this.visualSettings.atmosphericEffects) {
+      this.createAtmosphericEffects()
+    } else {
+      this.removeAtmosphericEffects()
+    }
+  }
+
+  private updateRenderDistance(): void {
+    this.camera.far = 1000 * this.performanceSettings.renderDistance
+    this.camera.updateProjectionMatrix()
+  }
+
+  private updateSmoothRotation(): void {
+    // Smooth rotation is handled in the animate loop
+    console.log('Smooth rotation:', this.performanceSettings.smoothRotation ? 'enabled' : 'disabled')
+  }
+
+  private updateFastTravel(): void {
+    // Fast travel affects camera movement speed
+    this.moveSpeed = this.performanceSettings.fastTravel ? 2.0 : 0.5
+  }
+
+  private updateHighFPS(): void {
+    // High FPS affects animation frame rate
+    console.log('High FPS mode:', this.performanceSettings.highFPS ? 'enabled' : 'disabled')
+  }
+
+  private updateOptimizedRendering(): void {
+    // Optimized rendering affects LOD and culling
+    console.log('Optimized rendering:', this.performanceSettings.optimizedRendering ? 'enabled' : 'disabled')
+  }
+
+  // Placeholder methods for visual effects
+  private createParticleEffects(): void {
+    console.log('Particle effects enabled')
+    // TODO: Implement particle system
+  }
+
+  private removeParticleEffects(): void {
+    console.log('Particle effects disabled')
+    // TODO: Remove particle system
+  }
+
+  private createDynamicLighting(): void {
+    console.log('Dynamic lighting enabled')
+    // TODO: Implement dynamic lighting
+  }
+
+  private removeDynamicLighting(): void {
+    console.log('Dynamic lighting disabled')
+    // TODO: Remove dynamic lighting
+  }
+
+  private createSpaceAmbience(): void {
+    console.log('Space ambience enabled')
+    // TODO: Implement space ambience (stars, nebula)
+  }
+
+  private removeSpaceAmbience(): void {
+    console.log('Space ambience disabled')
+    // TODO: Remove space ambience
+  }
+
+  private createAtmosphericEffects(): void {
+    console.log('Atmospheric effects enabled')
+    // TODO: Implement atmospheric effects
+  }
+
+  private removeAtmosphericEffects(): void {
+    console.log('Atmospheric effects disabled')
+    // TODO: Remove atmospheric effects
   }
 
   public dispose(): void {

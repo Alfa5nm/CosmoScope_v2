@@ -5,6 +5,8 @@ import { useAudio } from '../lib/audio/AudioContext'
 import { loadThree, markLibraryLoaded } from '../lib/dynamicImports'
 import { useCosmicTransition } from '../lib/utils'
 import { usePoints } from '../lib/hooks/usePoints'
+import { useObjectives } from '../lib/hooks/useObjectives'
+import { useSettings } from '../lib/hooks/useSettings'
 import { GameState } from '../App'
 import RightDrawer from './RightDrawer'
 import PlanetHUD from './PlanetHUD'
@@ -22,6 +24,8 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
   const { playSound } = useAudio()
   const { triggerTransition } = useCosmicTransition()
   const { awardPoints } = usePoints()
+  const { updateProgress, visitPlanet, completeObjective } = useObjectives()
+  const { visual, performance } = useSettings()
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<any>(null) // Will be SolarSystemScene after loading
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
@@ -63,6 +67,16 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
     }
   }, [])
 
+  // Apply settings when they change
+  useEffect(() => {
+    if (sceneRef.current && sceneRef.current.applySettings) {
+      sceneRef.current.applySettings({
+        visual,
+        performance
+      })
+    }
+  }, [visual, performance])
+
   useEffect(() => {
     if (!containerRef.current || !three || isLoadingLibrary) return
 
@@ -70,6 +84,14 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
     if (containerRef.current) {
       import('../lib/three/solarScene').then(({ SolarSystemScene }) => {
         sceneRef.current = new SolarSystemScene(containerRef.current!)
+        
+        // Apply visual and performance settings
+        if (sceneRef.current && sceneRef.current.applySettings) {
+          sceneRef.current.applySettings({
+            visual,
+            performance
+          })
+        }
         
         // Start ambient music only after scene is loaded
         playSound('ambient')
@@ -125,6 +147,10 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
     
     setIsTransitioning(true)
     playSound('click')
+    
+    // Update objective progress for all planet clicks (accessible and non-accessible)
+    updateProgress('tutorial-002', 1) // First planet visit
+    visitPlanet(planetName) // Track unique planet visits for exploration objectives
     
     if (isAccessible) {
       // Award points for deep exploration
@@ -216,6 +242,13 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
     if (planet) {
       // Award points for planet click
       awardPoints('PLANET_CLICK', e.clientX, e.clientY)
+      
+      // Update tutorial objective for first interaction
+      updateProgress('tutorial-001', 1)
+      
+      // Track planet visit for exploration objectives
+      visitPlanet(planet)
+      
       handlePlanetClick(planet)
     }
   }
@@ -277,10 +310,7 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
       )}
 
       {/* HUD Elements */}
-      <ObjectivesHUD 
-        objective={gameState.objective}
-        points={gameState.points}
-      />
+      <ObjectivesHUD />
 
       {/* Right Drawer */}
       <RightDrawer

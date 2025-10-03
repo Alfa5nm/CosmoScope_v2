@@ -3,6 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom'
 import { useTheme } from '../lib/ui/theme'
 import { useAudio } from '../lib/audio/AudioContext'
 import { useCosmicTransition } from '../lib/utils'
+import { useObjectives } from '../lib/hooks/useObjectives'
+import { useSettings } from '../lib/hooks/useSettings'
 import { GameState } from '../App'
 import Map2D from './Map2D'
 import Timeline from './Timeline'
@@ -32,6 +34,8 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
   const { theme } = useTheme()
   const { playSound } = useAudio()
   const { triggerTransition } = useCosmicTransition()
+  const { updateProgress } = useObjectives()
+  const { features } = useSettings()
   const currentDate = useViewStore(state => state.date)
   const selectedLayer = useViewStore(state => state.layerId)
   const storePlanetId = useViewStore(state => state.planetId)
@@ -52,6 +56,10 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
     planetId && knownPlanets.includes(planetId as PlanetId) ? (planetId as PlanetId) : null
   const planetLayers = resolvedPlanetId ? getPlanetConfig(resolvedPlanetId).layers : []
   const activeLayer = planetLayers.find(layer => layer.id === selectedLayer) ?? planetLayers[0]
+  
+  console.log('PlanetView: planetId =', planetId, 'resolvedPlanetId =', resolvedPlanetId)
+  console.log('PlanetView: planetLayers =', planetLayers.length, 'layers')
+  console.log('PlanetView: selectedLayer =', selectedLayer)
 
   useEffect(() => {
     // Simulate transition from 3D to 2D
@@ -226,6 +234,26 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
             map={mapInstanceRef.current}
           />
           <AnnotationPanel planet={resolvedPlanetId} />
+          
+          {/* Advanced Features Indicator */}
+          {features.advancedAnnotations && (
+            <div style={{
+              position: 'fixed',
+              top: '200px',
+              right: theme.spacing.lg,
+              background: 'rgba(0, 255, 0, 0.1)',
+              border: '1px solid #00ff00',
+              borderRadius: '8px',
+              padding: theme.spacing.sm,
+              color: '#00ff00',
+              fontSize: theme.typography.fontSize.sm,
+              fontWeight: theme.typography.fontWeight.bold,
+              zIndex: 1000,
+              animation: 'pulse 2s infinite'
+            }}>
+              ✨ Advanced Annotations Active
+            </div>
+          )}
         </>
       )}
 
@@ -240,31 +268,35 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
       {/* Controls */}
       <div style={{
         position: 'absolute',
-        top: theme.spacing.lg,
-        left: theme.spacing.lg,
+        top: theme.spacing.xl,
+        left: theme.spacing.xl,
         zIndex: 20
       }}>
         <button
           onClick={handleBackToSolarSystem}
           style={{
-            background: 'rgba(0, 0, 17, 0.8)',
+            background: 'rgba(0, 0, 17, 0.9)',
             border: `1px solid ${theme.colors.border}`,
             color: theme.colors.text,
             padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-            borderRadius: '4px',
+            borderRadius: '8px',
             cursor: 'pointer',
             fontSize: theme.typography.fontSize.md,
             backdropFilter: theme.effects.blur,
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            fontWeight: theme.typography.fontWeight.medium
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
+            e.currentTarget.style.background = 'rgba(0, 255, 255, 0.15)'
             e.currentTarget.style.boxShadow = theme.effects.glow
+            e.currentTarget.style.transform = 'translateY(-2px)'
             playSound('hover')
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.8)'
-            e.currentTarget.style.boxShadow = 'none'
+            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+            e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
           ← Back to Solar System
@@ -282,20 +314,27 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
       {/* Layer Switcher */}
       <div style={{
         position: 'absolute',
-        top: theme.spacing.lg,
-        right: theme.spacing.lg,
-        zIndex: 20,
+        top: '120px',
+        left: theme.spacing.xl,
+        zIndex: 1500,
         display: 'flex',
         flexDirection: 'column',
-        gap: theme.spacing.sm
+        gap: theme.spacing.md
       }}>
         <LayerSwitcher
           layers={planetLayers}
           selectedLayer={selectedLayer}
           onLayerChange={handleLayerChange}
         />
-        
-        {/* Warning Toggle */}
+      </div>
+
+      {/* Warning Toggle */}
+      <div style={{
+        position: 'absolute',
+        bottom: '120px',
+        right: theme.spacing.xl,
+        zIndex: 20
+      }}>
         <button
           onClick={() => {
             setShowWarnings(!showWarnings)
@@ -306,44 +345,51 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
             })
           }}
           style={{
-            background: showWarnings ? 'rgba(255, 165, 0, 0.8)' : 'rgba(0, 0, 17, 0.8)',
+            background: showWarnings ? 'rgba(255, 165, 0, 0.9)' : 'rgba(0, 0, 17, 0.9)',
             border: `1px solid ${showWarnings ? '#ffa500' : theme.colors.border}`,
             color: showWarnings ? '#000' : theme.colors.text,
-            padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-            borderRadius: '4px',
+            padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+            borderRadius: '8px',
             cursor: 'pointer',
             fontSize: theme.typography.fontSize.sm,
             backdropFilter: theme.effects.blur,
             transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
-            gap: theme.spacing.xs,
-            fontWeight: theme.typography.fontWeight.bold
+            gap: theme.spacing.sm,
+            fontWeight: theme.typography.fontWeight.bold,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            minWidth: '140px',
+            justifyContent: 'center'
           }}
           onMouseEnter={(e) => {
             if (showWarnings) {
               e.currentTarget.style.background = 'rgba(255, 165, 0, 1)'
+              e.currentTarget.style.transform = 'translateY(-2px)'
             } else {
-              e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
+              e.currentTarget.style.background = 'rgba(0, 255, 255, 0.15)'
               e.currentTarget.style.boxShadow = theme.effects.glow
+              e.currentTarget.style.transform = 'translateY(-2px)'
             }
             playSound('hover')
           }}
           onMouseLeave={(e) => {
             if (showWarnings) {
-              e.currentTarget.style.background = 'rgba(255, 165, 0, 0.8)'
+              e.currentTarget.style.background = 'rgba(255, 165, 0, 0.9)'
+              e.currentTarget.style.transform = 'translateY(0)'
             } else {
-              e.currentTarget.style.background = 'rgba(0, 0, 17, 0.8)'
-              e.currentTarget.style.boxShadow = 'none'
+              e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+              e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+              e.currentTarget.style.transform = 'translateY(0)'
             }
           }}
           title={showWarnings ? 'Hide warning messages' : 'Show warning messages'}
         >
-          <span style={{ fontSize: '16px' }}>
+          <span style={{ fontSize: '18px' }}>
             {showWarnings ? '⚠️' : '🔇'}
           </span>
           <span>
-            {showWarnings ? 'Warnings' : 'Warnings Off'}
+            {showWarnings ? 'Warnings On' : 'Warnings Off'}
           </span>
         </button>
       </div>
@@ -351,8 +397,8 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
       {/* Labels Panel Toggle */}
       <div style={{
         position: 'absolute',
-        bottom: theme.spacing.lg,
-        right: theme.spacing.lg,
+        bottom: theme.spacing.xl,
+        right: theme.spacing.xl,
         zIndex: 20
       }}>
         <button
@@ -361,27 +407,35 @@ const PlanetView: React.FC<PlanetViewProps> = ({ gameState, setGameState }) => {
             playSound('click')
           }}
           style={{
-            background: 'rgba(0, 0, 17, 0.8)',
+            background: 'rgba(0, 0, 17, 0.9)',
             border: `1px solid ${theme.colors.border}`,
             color: theme.colors.text,
             padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-            borderRadius: '4px',
+            borderRadius: '8px',
             cursor: 'pointer',
             fontSize: theme.typography.fontSize.md,
             backdropFilter: theme.effects.blur,
-            transition: 'all 0.3s ease'
+            transition: 'all 0.3s ease',
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            fontWeight: theme.typography.fontWeight.medium,
+            display: 'flex',
+            alignItems: 'center',
+            gap: theme.spacing.sm
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
+            e.currentTarget.style.background = 'rgba(0, 255, 255, 0.15)'
             e.currentTarget.style.boxShadow = theme.effects.glow
+            e.currentTarget.style.transform = 'translateY(-2px)'
             playSound('hover')
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.8)'
-            e.currentTarget.style.boxShadow = 'none'
+            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+            e.currentTarget.style.transform = 'translateY(0)'
           }}
         >
-          📍 Labels
+          <span style={{ fontSize: '18px' }}>📍</span>
+          <span>Labels</span>
         </button>
       </div>
 
@@ -518,33 +572,100 @@ const LayerSwitcher: React.FC<{
   const { theme } = useTheme()
   const { playSound } = useAudio()
   const [isOpen, setIsOpen] = useState(false)
+  const [showAbove, setShowAbove] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+  const buttonRef = useRef<HTMLButtonElement>(null)
+
+  // Handle click outside to close dropdown
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node) &&
+          buttonRef.current && !buttonRef.current.contains(event.target as Node)) {
+        setIsOpen(false)
+      }
+    }
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside)
+      return () => document.removeEventListener('mousedown', handleClickOutside)
+    }
+  }, [isOpen])
+
+  // Check if dropdown should show above or below
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect()
+      const viewportHeight = window.innerHeight
+      const viewportWidth = window.innerWidth
+      const dropdownHeight = layers.length * 80 + 20 // Approximate height
+      const dropdownWidth = 300 // Max width
+      
+      // If there's not enough space below, show above
+      if (buttonRect.bottom + dropdownHeight > viewportHeight - 20) {
+        setShowAbove(true)
+      } else {
+        setShowAbove(false)
+      }
+      
+      // Ensure dropdown doesn't go off the left edge
+      if (buttonRect.left < 0) {
+        // If button is near left edge, adjust positioning
+        const dropdownElement = dropdownRef.current
+        if (dropdownElement) {
+          dropdownElement.style.left = '0px'
+          dropdownElement.style.right = 'auto'
+        }
+      }
+    }
+  }, [isOpen, layers.length])
 
   if (layers.length === 0) {
+    console.log('LayerSwitcher: No layers available')
     return null
   }
+
+  console.log('LayerSwitcher: Rendering with', layers.length, 'layers')
 
   return (
     <div style={{ position: 'relative' }}>
       <button
+        ref={buttonRef}
         onClick={() => {
           setIsOpen(!isOpen)
           playSound('click')
         }}
         style={{
-          background: 'rgba(0, 0, 17, 0.8)',
-          border: `1px solid ${theme.colors.border}`,
-          color: theme.colors.text,
+          background: 'rgba(0, 0, 17, 0.95)',
+          border: `3px solid ${theme.colors.primary}`,
+          color: theme.colors.primary,
           padding: `${theme.spacing.md} ${theme.spacing.lg}`,
-          borderRadius: '4px',
+          borderRadius: '12px',
           cursor: 'pointer',
-          fontSize: theme.typography.fontSize.md,
+          fontSize: theme.typography.fontSize.lg,
           backdropFilter: theme.effects.blur,
           transition: 'all 0.3s ease',
           display: 'flex',
           alignItems: 'center',
-          gap: theme.spacing.sm
+          gap: theme.spacing.sm,
+          fontWeight: theme.typography.fontWeight.bold,
+          boxShadow: '0 0 20px rgba(51, 154, 240, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3)',
+          animation: 'layerSwitcherPulse 2s ease-in-out infinite',
+          minWidth: '140px',
+          justifyContent: 'center',
+          textTransform: 'uppercase',
+          letterSpacing: '1px'
         }}
-        onMouseEnter={() => playSound('hover')}
+        onMouseEnter={(e) => {
+          e.currentTarget.style.background = 'rgba(51, 154, 240, 0.2)'
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.boxShadow = '0 8px 20px rgba(51, 154, 240, 0.4)'
+          playSound('hover')
+        }}
+        onMouseLeave={(e) => {
+          e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+          e.currentTarget.style.transform = 'translateY(0)'
+          e.currentTarget.style.boxShadow = theme.effects.glow
+        }}
       >
         Layers
         <span style={{ fontSize: theme.typography.fontSize.sm }}>
@@ -553,17 +674,26 @@ const LayerSwitcher: React.FC<{
       </button>
 
       {isOpen && (
-        <div style={{
-          position: 'absolute',
-          top: '100%',
-          right: 0,
-          background: theme.colors.backgroundSecondary,
-          border: `1px solid ${theme.colors.border}`,
-          borderRadius: '4px',
-          marginTop: theme.spacing.sm,
-          minWidth: '200px',
-          boxShadow: theme.effects.shadow
-        }}>
+        <div 
+          ref={dropdownRef}
+          style={{
+            position: 'absolute',
+            top: showAbove ? 'auto' : '100%',
+            bottom: showAbove ? '100%' : 'auto',
+            left: 0,
+            right: 'auto',
+            background: theme.colors.backgroundSecondary,
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: '4px',
+            marginTop: showAbove ? 0 : theme.spacing.sm,
+            marginBottom: showAbove ? theme.spacing.sm : 0,
+            minWidth: '200px',
+            maxWidth: '300px',
+            maxHeight: '60vh',
+            overflowY: 'auto',
+            boxShadow: theme.effects.shadow,
+            zIndex: 2000
+          }}>
           {layers.map(layer => (
             <button
               key={layer.id}

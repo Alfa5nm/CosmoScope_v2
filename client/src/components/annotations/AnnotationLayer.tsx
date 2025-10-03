@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useAnnotationStore, type Annotation } from '../../store/annotationStore'
 import { useTheme } from '../../lib/ui/theme'
 import { useAudio } from '../../lib/audio/AudioContext'
+import { useObjectives } from '../../lib/hooks/useObjectives'
 
 interface AnnotationLayerProps {
   planet: 'earth' | 'mars' | 'moon'
@@ -12,6 +13,7 @@ interface AnnotationLayerProps {
 const AnnotationLayer: React.FC<AnnotationLayerProps> = ({ planet, mapContainer, map }) => {
   const { theme } = useTheme()
   const { playSound } = useAudio()
+  const { updateProgress } = useObjectives()
   const layerRef = useRef<HTMLDivElement>(null)
   const [isDrawing, setIsDrawing] = useState(false)
   const [drawingPath, setDrawingPath] = useState<number[][]>([])
@@ -110,6 +112,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({ planet, mapContainer,
       tags: []
     })
 
+    // Update objective progress for annotation creation
+    updateProgress('discovery-001', 1)
+
     // Auto-deselect tool after creating annotation
     setActiveMode(null)
   }
@@ -126,6 +131,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({ planet, mapContainer,
       color: '#4ecdc4',
       tags: []
     })
+
+    // Update objective progress for annotation creation
+    updateProgress('discovery-001', 1)
 
     // Auto-deselect tool after creating annotation
     setActiveMode(null)
@@ -172,6 +180,9 @@ const AnnotationLayer: React.FC<AnnotationLayerProps> = ({ planet, mapContainer,
       color: activeMode === 'area' ? '#45b7d1' : '#96ceb4',
       tags: []
     })
+
+    // Update objective progress for annotation creation
+    updateProgress('discovery-001', 1)
 
     cancelDrawing()
     // Auto-deselect tool after creating annotation

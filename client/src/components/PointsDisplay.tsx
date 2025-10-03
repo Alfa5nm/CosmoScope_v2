@@ -1,14 +1,22 @@
 import React, { useState, useEffect } from 'react';
 import { usePointsStore, PointsEvent } from '../store/pointsStore';
+import { usePoints } from '../lib/hooks/usePoints';
+import { useTheme } from '../lib/ui/theme';
+import { useAudio } from '../lib/audio/AudioContext';
+import Shop from './Shop';
 
 const PointsDisplay: React.FC = () => {
   const { totalPoints, recentEvents } = usePointsStore();
+  const { totalPoints: hookPoints } = usePoints();
+  const { theme } = useTheme();
+  const { playSound } = useAudio();
   const [isVisible, setIsVisible] = useState(true);
   const [displayPoints, setDisplayPoints] = useState(0);
+  const [showShop, setShowShop] = useState(false);
 
   // Animate points counter
   useEffect(() => {
-    const targetPoints = totalPoints;
+    const targetPoints = hookPoints || totalPoints || 0;
     const increment = Math.ceil((targetPoints - displayPoints) / 20);
     
     if (displayPoints < targetPoints) {
@@ -17,7 +25,7 @@ const PointsDisplay: React.FC = () => {
       }, 50);
       return () => clearTimeout(timer);
     }
-  }, [totalPoints, displayPoints]);
+  }, [hookPoints, totalPoints, displayPoints]);
 
   // Show/hide based on recent activity
   useEffect(() => {
@@ -29,6 +37,23 @@ const PointsDisplay: React.FC = () => {
     }
   }, [recentEvents.length]);
 
+  // Show visual feedback when points change
+  useEffect(() => {
+    if (hookPoints !== totalPoints) {
+      setIsVisible(true);
+      // Flash effect when points change
+      const flashElement = document.querySelector('.points-display');
+      if (flashElement) {
+        flashElement.style.animation = 'pointsFlash 0.5s ease-in-out';
+        setTimeout(() => {
+          if (flashElement) {
+            flashElement.style.animation = '';
+          }
+        }, 500);
+      }
+    }
+  }, [hookPoints, totalPoints]);
+
   return (
     <>
       {/* Main Points Display */}
@@ -36,8 +61,8 @@ const PointsDisplay: React.FC = () => {
         className="points-display"
         style={{
           position: 'fixed',
-          top: '20px',
-          left: '20px',
+          top: '120px',
+          right: theme.spacing.lg,
           zIndex: 1000,
           opacity: isVisible ? 1 : 0,
           transform: isVisible ? 'translateY(0)' : 'translateY(-20px)',
@@ -46,23 +71,37 @@ const PointsDisplay: React.FC = () => {
       >
         <div
           style={{
-            background: 'rgba(0, 0, 0, 0.8)',
-            border: '2px solid rgba(0, 255, 255, 0.6)',
-            borderRadius: '15px',
-            padding: '12px 20px',
-            backdropFilter: 'blur(10px)',
-            boxShadow: '0 0 20px rgba(0, 255, 255, 0.3)',
+            background: 'rgba(0, 0, 17, 0.8)',
+            border: `1px solid ${theme.colors.border}`,
+            borderRadius: '8px',
+            padding: theme.spacing.md,
+            backdropFilter: theme.effects.blur,
+            boxShadow: theme.effects.glow,
             display: 'flex',
             alignItems: 'center',
-            gap: '12px',
-            minWidth: '200px'
+            gap: theme.spacing.sm,
+            minWidth: '200px',
+            transition: 'all 0.3s ease',
+            opacity: 0.7
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.opacity = '1'
+            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+            e.currentTarget.style.boxShadow = theme.effects.glow
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.opacity = '0.7'
+            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.8)'
+            e.currentTarget.style.boxShadow = theme.effects.glow
           }}
         >
           {/* Points Icon */}
           <div
             style={{
-              fontSize: '24px',
-              animation: 'pointsGlow 2s ease-in-out infinite'
+              fontSize: theme.typography.fontSize.xxl,
+              color: theme.colors.primary,
+              animation: 'pointsGlow 2s ease-in-out infinite',
+              textShadow: theme.effects.glow
             }}
           >
             ⭐
@@ -71,11 +110,11 @@ const PointsDisplay: React.FC = () => {
           {/* Points Counter */}
           <div
             style={{
-              color: '#00ffff',
-              fontSize: '20px',
-              fontWeight: 'bold',
-              fontFamily: 'monospace',
-              textShadow: '0 0 10px rgba(0, 255, 255, 0.8)'
+              color: theme.colors.primary,
+              fontSize: theme.typography.fontSize.xl,
+              fontWeight: theme.typography.fontWeight.bold,
+              fontFamily: theme.typography.fontFamily,
+              textShadow: theme.effects.glow
             }}
           >
             {displayPoints.toLocaleString()}
@@ -84,13 +123,52 @@ const PointsDisplay: React.FC = () => {
           {/* Points Label */}
           <div
             style={{
-              color: '#ffffff',
-              fontSize: '14px',
+              color: theme.colors.text,
+              fontSize: theme.typography.fontSize.sm,
+              fontWeight: theme.typography.fontWeight.bold,
+              fontFamily: theme.typography.fontFamily,
+              textTransform: 'uppercase',
+              letterSpacing: '1px',
               opacity: 0.8
             }}
           >
             POINTS
           </div>
+
+          {/* Shop Button */}
+          <button
+            onClick={() => {
+              setShowShop(true);
+              playSound('click');
+            }}
+            style={{
+              background: 'rgba(51, 154, 240, 0.2)',
+              border: `1px solid ${theme.colors.primary}`,
+              color: theme.colors.primary,
+              padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontSize: theme.typography.fontSize.xs,
+              fontWeight: theme.typography.fontWeight.bold,
+              transition: 'all 0.2s ease',
+              display: 'flex',
+              alignItems: 'center',
+              gap: theme.spacing.xs,
+              marginLeft: theme.spacing.sm
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = 'rgba(51, 154, 240, 0.3)';
+              e.currentTarget.style.transform = 'translateY(-1px)';
+              playSound('hover');
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'rgba(51, 154, 240, 0.2)';
+              e.currentTarget.style.transform = 'translateY(0)';
+            }}
+            title="Open Shop"
+          >
+            🛒 Shop
+          </button>
         </div>
       </div>
 
@@ -98,6 +176,12 @@ const PointsDisplay: React.FC = () => {
       {recentEvents.map((event) => (
         <FloatingPointsEvent key={event.id} event={event} />
       ))}
+
+      {/* Shop Modal */}
+      <Shop 
+        isOpen={showShop} 
+        onClose={() => setShowShop(false)} 
+      />
     </>
   );
 };

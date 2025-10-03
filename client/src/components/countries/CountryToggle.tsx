@@ -46,7 +46,7 @@ const CountryToggle: React.FC<CountryToggleProps> = ({ planet, onToast }) => {
   return (
     <div style={{
       position: 'absolute',
-      top: '180px', // Below annotation toolbar
+      top: '240px', // Increased spacing from Warnings Off button
       right: theme.spacing.lg,
       zIndex: 30
     }}>
@@ -55,38 +55,46 @@ const CountryToggle: React.FC<CountryToggleProps> = ({ planet, onToast }) => {
         style={{
           background: isEnabled 
             ? 'rgba(51, 154, 240, 0.9)' 
-            : 'rgba(0, 0, 17, 0.8)',
+            : 'rgba(0, 0, 17, 0.9)',
           border: isEnabled 
             ? `1px solid #339af0` 
             : `1px solid ${theme.colors.border}`,
           color: isEnabled ? '#000' : theme.colors.text,
-          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-          borderRadius: '4px',
+          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+          borderRadius: '8px',
           cursor: 'pointer',
           fontSize: theme.typography.fontSize.sm,
           backdropFilter: theme.effects.blur,
           transition: 'all 0.3s ease',
           display: 'flex',
           alignItems: 'center',
-          gap: theme.spacing.xs,
+          gap: theme.spacing.sm,
           fontWeight: theme.typography.fontWeight.bold,
-          minWidth: '140px'
+          minWidth: '140px',
+          justifyContent: 'center',
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)'
         }}
         onMouseEnter={(e) => {
           if (isEnabled) {
             e.currentTarget.style.background = 'rgba(51, 154, 240, 1)'
+            e.currentTarget.style.transform = 'translateY(-2px)'
+            e.currentTarget.style.boxShadow = '0 6px 16px rgba(51, 154, 240, 0.4)'
           } else {
-            e.currentTarget.style.background = 'rgba(51, 154, 240, 0.1)'
+            e.currentTarget.style.background = 'rgba(51, 154, 240, 0.15)'
             e.currentTarget.style.boxShadow = theme.effects.glow
+            e.currentTarget.style.transform = 'translateY(-2px)'
           }
           playSound('hover')
         }}
         onMouseLeave={(e) => {
           if (isEnabled) {
             e.currentTarget.style.background = 'rgba(51, 154, 240, 0.9)'
+            e.currentTarget.style.transform = 'translateY(0)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
           } else {
-            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.8)'
-            e.currentTarget.style.boxShadow = 'none'
+            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+            e.currentTarget.style.transform = 'translateY(0)'
           }
         }}
         title={isEnabled 

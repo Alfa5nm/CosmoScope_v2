@@ -1,7 +1,7 @@
 import { usePointsStore, POINTS_CONFIG } from '../../store/pointsStore';
 
 export const usePoints = () => {
-  const { addPoints } = usePointsStore();
+  const { addPoints, spendPoints: spendPointsStore, totalPoints } = usePointsStore();
 
   const awardPoints = (type: keyof typeof POINTS_CONFIG, x?: number, y?: number) => {
     const points = POINTS_CONFIG[type];
@@ -13,9 +13,15 @@ export const usePoints = () => {
     addPoints(points, reason, x, y);
   };
 
+  const spendPoints = (points: number, reason: string) => {
+    return spendPointsStore(points, reason);
+  };
+
   return {
     awardPoints,
-    awardCustomPoints
+    awardCustomPoints,
+    spendPoints,
+    totalPoints
   };
 };
 

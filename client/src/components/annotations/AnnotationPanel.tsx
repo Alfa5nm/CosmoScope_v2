@@ -81,8 +81,8 @@ const AnnotationPanel: React.FC<AnnotationPanelProps> = ({ planet }) => {
   return (
     <div style={{
       position: 'absolute',
-      bottom: theme.spacing.lg,
-      left: theme.spacing.lg,
+      bottom: theme.spacing.xl,
+      left: '350px', // Position to the right of the planet info panel
       zIndex: 40,
       maxWidth: '400px',
       minWidth: '300px'
@@ -97,8 +97,8 @@ const AnnotationPanel: React.FC<AnnotationPanelProps> = ({ planet }) => {
           background: 'rgba(0, 0, 17, 0.9)',
           border: `1px solid ${theme.colors.border}`,
           color: theme.colors.text,
-          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-          borderRadius: '4px',
+          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+          borderRadius: '8px',
           cursor: 'pointer',
           fontSize: theme.typography.fontSize.sm,
           backdropFilter: theme.effects.blur,
@@ -106,14 +106,22 @@ const AnnotationPanel: React.FC<AnnotationPanelProps> = ({ planet }) => {
           display: 'flex',
           alignItems: 'center',
           gap: theme.spacing.sm,
-          marginBottom: isExpanded ? theme.spacing.sm : 0
+          marginBottom: isExpanded ? theme.spacing.md : 0,
+          boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+          fontWeight: theme.typography.fontWeight.medium,
+          width: '100%',
+          justifyContent: 'space-between'
         }}
         onMouseEnter={(e) => {
-          e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
+          e.currentTarget.style.background = 'rgba(0, 255, 255, 0.15)'
+          e.currentTarget.style.boxShadow = theme.effects.glow
+          e.currentTarget.style.transform = 'translateY(-2px)'
           playSound('hover')
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+          e.currentTarget.style.transform = 'translateY(0)'
         }}
       >
         <span style={{ fontSize: '16px' }}>📋</span>
@@ -128,12 +136,13 @@ const AnnotationPanel: React.FC<AnnotationPanelProps> = ({ planet }) => {
         <div style={{
           background: 'rgba(0, 0, 17, 0.95)',
           border: `1px solid ${theme.colors.border}`,
-          borderRadius: '8px',
+          borderRadius: '12px',
           backdropFilter: theme.effects.blur,
           maxHeight: '400px',
           overflow: 'hidden',
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
+          boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
         }}>
           {/* Header */}
           <div style={{

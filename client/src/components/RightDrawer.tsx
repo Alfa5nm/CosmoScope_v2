@@ -1,6 +1,8 @@
 import React, { useState } from 'react'
 import { useTheme } from '../lib/ui/theme'
 import { useAudio } from '../lib/audio/AudioContext'
+import { useViewStore } from '../store/viewStore'
+import { getPlanetConfig, type PlanetId } from '../config/planetLayers'
 
 interface RightDrawerProps {
   onPlanetSelect: (planet: string) => void
@@ -12,6 +14,13 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ onPlanetSelect, onModeChange 
   const { playSound } = useAudio()
   const [isOpen, setIsOpen] = useState(false)
   const [activeMode, setActiveMode] = useState('story')
+  const [showLayerSwitcher, setShowLayerSwitcher] = useState(false)
+  
+  // Get current planet and layers
+  const currentPlanet = useViewStore(state => state.planetId) as PlanetId
+  const selectedLayer = useViewStore(state => state.layerId)
+  const setStoreLayer = useViewStore(state => state.setLayer)
+  const planetLayers = currentPlanet ? getPlanetConfig(currentPlanet).layers : []
 
   const planets = [
     { id: 'mercury', name: 'Mercury', color: '#8c7853' },
@@ -40,6 +49,12 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ onPlanetSelect, onModeChange 
     playSound('click')
     setActiveMode(mode)
     onModeChange(mode)
+  }
+
+  const handleLayerChange = (layerId: string) => {
+    playSound('click')
+    setStoreLayer(layerId)
+    setShowLayerSwitcher(false)
   }
 
   return (
@@ -229,43 +244,120 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ onPlanetSelect, onModeChange 
             </div>
           </div>
 
-          {/* Layers Shortcut */}
-          <div>
-            <h4 style={{
-              color: theme.colors.text,
-              fontSize: theme.typography.fontSize.md,
-              marginBottom: theme.spacing.md,
-              textTransform: 'uppercase',
-              letterSpacing: '1px'
-            }}>
-              Layers
-            </h4>
-            
-            <button
-              style={{
-                background: 'transparent',
-                border: `1px solid ${theme.colors.border}`,
+          {/* Layer Switcher */}
+          {planetLayers.length > 0 && (
+            <div style={{ marginBottom: theme.spacing.xl }}>
+              <h4 style={{
                 color: theme.colors.text,
-                padding: theme.spacing.md,
-                borderRadius: '4px',
-                cursor: 'pointer',
-                transition: 'all 0.3s ease',
-                width: '100%',
-                textAlign: 'left'
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
-                e.currentTarget.style.boxShadow = theme.effects.glow
-                playSound('hover')
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.background = 'transparent'
-                e.currentTarget.style.boxShadow = 'none'
-              }}
-            >
-              Layer Switcher
-            </button>
-          </div>
+                fontSize: theme.typography.fontSize.md,
+                marginBottom: theme.spacing.md,
+                textTransform: 'uppercase',
+                letterSpacing: '1px'
+              }}>
+                Layers
+              </h4>
+              
+              <button
+                onClick={() => setShowLayerSwitcher(!showLayerSwitcher)}
+                style={{
+                  background: 'rgba(0, 0, 17, 0.8)',
+                  border: `1px solid ${theme.colors.border}`,
+                  color: theme.colors.text,
+                  padding: theme.spacing.md,
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  transition: 'all 0.3s ease',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'space-between',
+                  width: '100%',
+                  fontSize: theme.typography.fontSize.sm,
+                  fontWeight: theme.typography.fontWeight.bold
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
+                  e.currentTarget.style.boxShadow = theme.effects.glow
+                  playSound('hover')
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'rgba(0, 0, 17, 0.8)'
+                  e.currentTarget.style.boxShadow = 'none'
+                }}
+              >
+                <span>Layer Switcher</span>
+                <span style={{ fontSize: theme.typography.fontSize.sm }}>
+                  {showLayerSwitcher ? '▼' : '▶'}
+                </span>
+              </button>
+
+              {showLayerSwitcher && (
+                <div style={{
+                  marginTop: theme.spacing.sm,
+                  background: 'rgba(0, 0, 17, 0.6)',
+                  border: `1px solid ${theme.colors.border}`,
+                  borderRadius: '8px',
+                  padding: theme.spacing.sm,
+                  maxHeight: '200px',
+                  overflowY: 'auto'
+                }}>
+                  {planetLayers.map(layer => (
+                    <button
+                      key={layer.id}
+                      onClick={() => handleLayerChange(layer.id)}
+                      style={{
+                        display: 'block',
+                        width: '100%',
+                        background: selectedLayer === layer.id ? theme.colors.primary : 'transparent',
+                        color: selectedLayer === layer.id ? theme.colors.background : theme.colors.text,
+                        border: 'none',
+                        padding: theme.spacing.sm,
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        textAlign: 'left',
+                        transition: 'all 0.3s ease',
+                        marginBottom: theme.spacing.xs
+                      }}
+                      onMouseEnter={(e) => {
+                        if (selectedLayer !== layer.id) {
+                          e.currentTarget.style.background = 'rgba(0, 255, 255, 0.1)'
+                        }
+                        playSound('hover')
+                      }}
+                      onMouseLeave={(e) => {
+                        if (selectedLayer !== layer.id) {
+                          e.currentTarget.style.background = 'transparent'
+                        }
+                      }}
+                    >
+                      <div style={{
+                        fontWeight: theme.typography.fontWeight.bold,
+                        marginBottom: theme.spacing.xs,
+                        fontSize: theme.typography.fontSize.sm
+                      }}>
+                        {layer.name}
+                      </div>
+                      <div style={{
+                        color: selectedLayer === layer.id ? theme.colors.background : theme.colors.textSecondary,
+                        fontSize: theme.typography.fontSize.xs,
+                        opacity: 0.85
+                      }}>
+                        {layer.description}
+                      </div>
+                      <div style={{
+                        color: selectedLayer === layer.id ? theme.colors.background : theme.colors.textSecondary,
+                        fontSize: theme.typography.fontSize.xs,
+                        opacity: 0.7
+                      }}>
+                        <strong>Category:</strong> {layer.category}
+                        {layer.metadata?.provider ? ` • ${layer.metadata.provider}` : ''}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
       </div>
     </>

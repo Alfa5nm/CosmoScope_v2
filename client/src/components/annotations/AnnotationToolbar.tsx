@@ -110,34 +110,40 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
     return (
       <div style={{
         position: 'absolute',
-        top: '120px',
-        right: theme.spacing.lg,
+        top: '160px',
+        right: theme.spacing.xl,
         zIndex: 30
       }}>
         <button
           onClick={handleToggle}
           style={{
-            background: 'rgba(0, 0, 17, 0.8)',
+            background: 'rgba(0, 0, 17, 0.9)',
             border: `1px solid ${theme.colors.border}`,
             color: theme.colors.text,
-            padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-            borderRadius: '4px',
+            padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+            borderRadius: '8px',
             cursor: 'pointer',
             fontSize: theme.typography.fontSize.sm,
             backdropFilter: theme.effects.blur,
             transition: 'all 0.3s ease',
             display: 'flex',
             alignItems: 'center',
-            gap: theme.spacing.xs
+            gap: theme.spacing.sm,
+            boxShadow: '0 4px 12px rgba(0, 0, 0, 0.3)',
+            fontWeight: theme.typography.fontWeight.medium,
+            minWidth: '140px',
+            justifyContent: 'center'
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = 'rgba(255, 165, 0, 0.1)'
+            e.currentTarget.style.background = 'rgba(255, 165, 0, 0.15)'
             e.currentTarget.style.boxShadow = theme.effects.glow
+            e.currentTarget.style.transform = 'translateY(-2px)'
             playSound('hover')
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.8)'
-            e.currentTarget.style.boxShadow = 'none'
+            e.currentTarget.style.background = 'rgba(0, 0, 17, 0.9)'
+            e.currentTarget.style.boxShadow = '0 4px 12px rgba(0, 0, 0, 0.3)'
+            e.currentTarget.style.transform = 'translateY(0)'
           }}
           title="Enable annotation mode"
         >
@@ -151,12 +157,12 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
   return (
     <div style={{
       position: 'absolute',
-      top: '120px',
-      right: theme.spacing.lg,
+      top: '160px',
+      right: theme.spacing.xl,
       zIndex: 30,
       display: 'flex',
       flexDirection: 'column',
-      gap: theme.spacing.sm
+      gap: theme.spacing.md
     }}>
       {/* Main toggle button */}
       <button
@@ -165,23 +171,30 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
           background: 'rgba(255, 165, 0, 0.9)',
           border: `1px solid #ffa500`,
           color: '#000',
-          padding: `${theme.spacing.sm} ${theme.spacing.md}`,
-          borderRadius: '4px',
+          padding: `${theme.spacing.md} ${theme.spacing.lg}`,
+          borderRadius: '8px',
           cursor: 'pointer',
           fontSize: theme.typography.fontSize.sm,
           backdropFilter: theme.effects.blur,
           transition: 'all 0.3s ease',
           display: 'flex',
           alignItems: 'center',
-          gap: theme.spacing.xs,
-          fontWeight: theme.typography.fontWeight.bold
+          gap: theme.spacing.sm,
+          fontWeight: theme.typography.fontWeight.bold,
+          boxShadow: '0 4px 12px rgba(255, 165, 0, 0.3)',
+          minWidth: '160px',
+          justifyContent: 'center'
         }}
         onMouseEnter={(e) => {
           e.currentTarget.style.background = 'rgba(255, 165, 0, 1)'
+          e.currentTarget.style.transform = 'translateY(-2px)'
+          e.currentTarget.style.boxShadow = '0 6px 16px rgba(255, 165, 0, 0.4)'
           playSound('hover')
         }}
         onMouseLeave={(e) => {
           e.currentTarget.style.background = 'rgba(255, 165, 0, 0.9)'
+          e.currentTarget.style.transform = 'translateY(0)'
+          e.currentTarget.style.boxShadow = '0 4px 12px rgba(255, 165, 0, 0.3)'
         }}
         title="Disable annotation mode (or press ESC)"
       >
@@ -198,12 +211,13 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
 
       {/* Tool panel */}
       <div style={{
-        background: 'rgba(0, 0, 17, 0.9)',
+        background: 'rgba(0, 0, 17, 0.95)',
         border: `1px solid ${theme.colors.border}`,
-        borderRadius: '8px',
-        padding: theme.spacing.md,
+        borderRadius: '12px',
+        padding: theme.spacing.lg,
         backdropFilter: theme.effects.blur,
-        minWidth: '200px'
+        minWidth: '240px',
+        boxShadow: '0 8px 24px rgba(0, 0, 0, 0.4)'
       }}>
         <div style={{
           color: theme.colors.primary,
@@ -247,8 +261,8 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
         <div style={{
           display: 'grid',
           gridTemplateColumns: '1fr 1fr',
-          gap: theme.spacing.xs,
-          marginBottom: theme.spacing.md
+          gap: theme.spacing.md,
+          marginBottom: theme.spacing.lg
         }}>
           {tools.map(tool => (
             <button
@@ -262,19 +276,22 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
                   ? `2px solid ${theme.colors.primary}` 
                   : `1px solid ${theme.colors.border}`,
                 color: activeMode === tool.id ? '#000' : theme.colors.text,
-                padding: theme.spacing.sm,
-                borderRadius: '6px',
+                padding: theme.spacing.md,
+                borderRadius: '8px',
                 cursor: 'pointer',
-                fontSize: theme.typography.fontSize.xs,
+                fontSize: theme.typography.fontSize.sm,
                 transition: 'all 0.3s ease',
                 display: 'flex',
                 flexDirection: 'column',
                 alignItems: 'center',
-                gap: '4px',
+                gap: theme.spacing.xs,
                 boxShadow: activeMode === tool.id 
-                  ? `0 0 10px rgba(0, 255, 255, 0.5)` 
-                  : 'none',
-                transform: activeMode === tool.id ? 'scale(1.05)' : 'scale(1)'
+                  ? `0 4px 12px rgba(0, 255, 255, 0.3)` 
+                  : '0 2px 8px rgba(0, 0, 0, 0.2)',
+                transform: activeMode === tool.id ? 'scale(1.05)' : 'scale(1)',
+                fontWeight: theme.typography.fontWeight.medium,
+                minHeight: '60px',
+                justifyContent: 'center'
               }}
               onMouseEnter={(e) => {
                 if (activeMode !== tool.id) {
@@ -315,8 +332,8 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
         {/* Actions */}
         <div style={{
           display: 'flex',
-          gap: theme.spacing.xs,
-          marginBottom: theme.spacing.sm
+          gap: theme.spacing.sm,
+          marginBottom: theme.spacing.md
         }}>
           <button
             onClick={handleExport}
@@ -327,11 +344,13 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
                 : 'rgba(128, 128, 128, 0.2)',
               border: `1px solid ${planetAnnotations.length > 0 ? '#00ff00' : '#666'}`,
               color: planetAnnotations.length > 0 ? theme.colors.text : '#666',
-              padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-              borderRadius: '4px',
+              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+              borderRadius: '6px',
               cursor: planetAnnotations.length > 0 ? 'pointer' : 'not-allowed',
-              fontSize: theme.typography.fontSize.xs,
-              flex: 1
+              fontSize: theme.typography.fontSize.sm,
+              flex: 1,
+              transition: 'all 0.3s ease',
+              fontWeight: theme.typography.fontWeight.medium
             }}
             title="Export annotations"
           >
@@ -347,11 +366,13 @@ const AnnotationToolbar: React.FC<AnnotationToolbarProps> = ({ planet, onToast }
                 : 'rgba(128, 128, 128, 0.2)',
               border: `1px solid ${planetAnnotations.length > 0 ? '#ff0000' : '#666'}`,
               color: planetAnnotations.length > 0 ? theme.colors.text : '#666',
-              padding: `${theme.spacing.xs} ${theme.spacing.sm}`,
-              borderRadius: '4px',
+              padding: `${theme.spacing.sm} ${theme.spacing.md}`,
+              borderRadius: '6px',
               cursor: planetAnnotations.length > 0 ? 'pointer' : 'not-allowed',
-              fontSize: theme.typography.fontSize.xs,
-              flex: 1
+              fontSize: theme.typography.fontSize.sm,
+              flex: 1,
+              transition: 'all 0.3s ease',
+              fontWeight: theme.typography.fontWeight.medium
             }}
             title="Clear all annotations"
           >
