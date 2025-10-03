@@ -1,13 +1,17 @@
 import React, { useState, useEffect, Suspense, lazy } from 'react'
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
 import { QueryClientProvider } from '@tanstack/react-query'
-import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import Landing from './components/Landing'
 import PointsDisplay from './components/PointsDisplay'
 import { ThemeProvider } from './lib/ui/theme'
 import { AudioProvider } from './lib/audio/AudioContext'
 import { generateId } from './lib/utils'
 import { queryClient } from './lib/queryClient'
+
+// Conditionally import devtools only in development
+const ReactQueryDevtools = process.env.NODE_ENV === 'development' 
+  ? React.lazy(() => import('@tanstack/react-query-devtools').then(d => ({ default: d.ReactQueryDevtools })))
+  : null
 
 // Demo data
 const DEMO_LABELS = [
@@ -189,8 +193,10 @@ const App: React.FC = () => {
         </AudioProvider>
       </ThemeProvider>
       {/* React Query DevTools - only in development */}
-      {import.meta.env.DEV && (
-        <ReactQueryDevtools initialIsOpen={false} />
+      {ReactQueryDevtools && (
+        <Suspense fallback={null}>
+          <ReactQueryDevtools initialIsOpen={false} />
+        </Suspense>
       )}
     </QueryClientProvider>
   )

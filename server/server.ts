@@ -28,8 +28,8 @@ const __dirname = dirname(__filename)
 
 const defaultConfig: ServerConfig = {
   NASA_API_KEY: process.env.NASA_API_KEY ?? 'SET_ME',
-  PORT: Number(process.env.PORT ?? 5174),
-  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:5173'],
+  PORT: Number(process.env.PORT ?? 3000), // Railway default port
+  ALLOWED_ORIGINS: process.env.ALLOWED_ORIGINS?.split(',') ?? ['http://localhost:3000'],
   DATABASE_PATH: process.env.DATABASE_PATH ?? './db.sqlite'
 }
 
@@ -146,6 +146,17 @@ app.get('/api/health', (req, res) => {
       hasNasaKey: config.NASA_API_KEY !== 'SET_ME',
       allowedOrigins: config.ALLOWED_ORIGINS.length
     }
+  })
+})
+
+// Health check endpoint for Railway
+app.get('/health', (req, res) => {
+  res.status(200).json({
+    status: 'ok',
+    timestamp: new Date().toISOString(),
+    uptime: process.uptime(),
+    environment: process.env.NODE_ENV || 'development',
+    version: '1.0.0'
   })
 })
 
