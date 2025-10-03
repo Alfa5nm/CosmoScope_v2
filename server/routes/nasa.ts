@@ -232,7 +232,18 @@ type IiifTileConfig = {
   size?: number
 }
 
-type TileConfig = GibsTileConfig | ArcgisImageConfig | IiifTileConfig
+
+type WmsTileConfig = {
+  type: 'wms'
+  endpoint: string
+  layer: string
+  format?: string
+  styles?: string
+  version?: '1.1.1' | '1.3.0'
+  additionalParams?: Record<string, string>
+}
+
+type TileConfig = GibsTileConfig | ArcgisImageConfig | IiifTileConfig | WmsTileConfig
 
 const IIIF_BASE_URL = (process.env.IIIF_BASE_URL || 'http://localhost:8182/iiif/2').replace(/\/+$/, '')
 const keepAliveAgent = new UndiciAgent({ connect: { keepAlive: true } })
@@ -278,19 +289,20 @@ const getIiifInfo = async (config: IiifTileConfig): Promise<IiifInfo> => {
   return info
 }
 
+
 const tileSources: Record<string, Record<string, TileConfig>> = {
   earth: {
     base: {
       type: 'gibs',
       layer: 'MODIS_Terra_CorrectedReflectance_TrueColor',
-      tileMatrixSet: '250m',
+      tileMatrixSet: 'EPSG4326_250m',
       format: 'jpeg',
       supportsTime: true
     },
     thermal: {
       type: 'gibs',
       layer: 'AIRS_L3_Surface_Air_Temperature_Daily_Day',
-      tileMatrixSet: '2km',
+      tileMatrixSet: 'EPSG4326_2km',
       format: 'png',
       supportsTime: true,
       defaultTime: '2021-02-01'
@@ -298,15 +310,26 @@ const tileSources: Record<string, Record<string, TileConfig>> = {
     night: {
       type: 'gibs',
       layer: 'VIIRS_CityLights_2012',
-      tileMatrixSet: '500m',
+      tileMatrixSet: 'EPSG4326_500m',
       format: 'jpeg',
       defaultTime: '2012-01-01'
     },
     elevation: {
       type: 'gibs',
-      layer: 'SRTM_Color_Index',
-      tileMatrixSet: '31.25m',
-      format: 'png'
+      layer: 'BlueMarble_ShadedRelief_Bathymetry',
+      tileMatrixSet: 'EPSG4326_500m',
+      format: 'jpeg'
+    },
+    'cwfis-active-fires': {
+      type: 'wms',
+      endpoint: 'https://cwfis.cfs.nrcan.gc.ca/geoserver/public/ows',
+      layer: 'activefires_current',
+      format: 'image/png',
+      styles: '',
+      version: '1.1.1',
+      additionalParams: {
+        transparent: 'true'
+      }
     }
   },
   mars: {
@@ -414,6 +437,12 @@ router.get('/tiles/:planet/:layer/:z/:x/:y', async (req: express.Request, res: e
     const zNum = Number(z)
     const xNum = Number(x)
     const yNum = Number(y)
+    
+    // Debug: Check if we're getting requests for eastern hemisphere tiles
+    // For zoom level 2, tiles 2-3 should contain Australia/Asia
+    if (zNum <= 3 && xNum >= 2) {
+      console.log(`🌏 Eastern hemisphere tile request: z=${z}, x=${x}, y=${y} (should contain Asia/Australia)`)
+    }
 
     if (![zNum, xNum, yNum].every(Number.isFinite)) {
       res.status(400).json({ error: 'Invalid tile coordinates supplied' })
@@ -463,13 +492,45 @@ router.get('/tiles/:planet/:layer/:z/:x/:y', async (req: express.Request, res: e
       const arcgisUrl = `${trimTrailingSlash(layerConfig.endpoint)}/exportImage?${params.toString()}`
       logTile(`Fetching ArcGIS tile: ${arcgisUrl}`)
       upstreamResponse = await fetchWithAgent(arcgisUrl)
-    } else {
+    } else if (layerConfig.type === 'wms') {
+      const bbox = tileToBBox4326(zNum, xNum, yNum)
+      const version = layerConfig.version || '1.1.1'
+      const params = new URLSearchParams({
+        service: 'WMS',
+        request: 'GetMap',
+        version,
+        layers: layerConfig.layer || '',
+        styles: layerConfig.styles || '',
+        format: layerConfig.format || 'image/png',
+        transparent: 'true',
+        width: '256',
+        height: '256'
+      })
+
+      if (version === '1.3.0') {
+        params.set('crs', 'EPSG:4326')
+        params.set('bbox', `${bbox[1]},${bbox[0]},${bbox[3]},${bbox[2]}`)
+      } else {
+        params.set('srs', 'EPSG:4326')
+        params.set('bbox', bbox.join(','))
+      }
+
+      if (layerConfig.additionalParams) {
+        for (const [key, value] of Object.entries(layerConfig.additionalParams)) {
+          params.set(key, value)
+        }
+      }
+
+      const wmsUrl = `${trimTrailingSlash(layerConfig.endpoint || '')}?${params.toString()}`
+      logTile(`Fetching WMS tile: ${wmsUrl}`)
+      upstreamResponse = await fetchWithAgent(wmsUrl)
+    } else if (layerConfig.type === 'iiif') {
       const info = await getIiifInfo(layerConfig)
       const { region, width, height } = xyzToIiifRegion(info, zNum, xNum, yNum)
 
       if (width === 0 || height === 0) {
         res.status(404).json({ error: 'Tile out of bounds' })
-      return
+        return
       }
 
       const size = layerConfig.size ?? 256
@@ -479,6 +540,9 @@ router.get('/tiles/:planet/:layer/:z/:x/:y', async (req: express.Request, res: e
 
       logTile(`Fetching IIIF tile: ${iiifUrl}`)
       upstreamResponse = await fetchWithAgent(iiifUrl)
+    } else {
+      res.status(400).json({ error: `Unsupported layer type: ${(layerConfig as any).type}` })
+      return
     }
 
     logTile(`Upstream status: ${upstreamResponse.status}`)

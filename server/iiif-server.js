@@ -1,4 +1,4 @@
-import 'dotenv/config'
+﻿import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import { dirname, join } from 'path'
@@ -10,6 +10,8 @@ const __dirname = dirname(__filename)
 const app = express()
 const DEFAULT_PORT = 8080
 const PORT = Number(process.env.IIIF_SERVER_PORT ?? DEFAULT_PORT)
+let activePort = PORT
+const MAX_PORT_ATTEMPTS = 10
 
 // Enable CORS for all routes
 app.use(cors())
@@ -24,7 +26,7 @@ app.get('/iiif/2/:identifier/:region/:size/:rotation/:quality.:format', (req, re
   // Placeholder response
   res.json({
     '@context': 'http://iiif.io/api/image/2/context.json',
-    '@id': `http://localhost:${PORT}/iiif/2/${identifier}`,
+    '@id': `http://localhost:${activePort}/iiif/2/${identifier}`,
     protocol: 'http://iiif.io/api/image',
     width: 2048,
     height: 2048,
@@ -48,19 +50,30 @@ app.get('/iiif/2/:identifier/:region/:size/:rotation/:quality.:format', (req, re
 
 // Health check endpoint
 app.get('/health', (_req, res) => {
-  res.json({ status: 'OK', service: 'IIIF Server' })
+  res.json({ status: 'OK', service: 'IIIF Server', port: activePort })
 })
 
-const server = app.listen(PORT, () => {
-  console.log(`IIIF Server running on http://localhost:${PORT}`)
-  console.log(`Health check: http://localhost:${PORT}/health`)
-})
+const startServer = (desiredPort, attempt = 0) => {
+  const targetPort = desiredPort + attempt
+  const server = app.listen(targetPort, () => {
+    activePort = targetPort
+    process.env.IIIF_SERVER_PORT = String(targetPort)
+    console.log(`[iiif] Server ready on http://localhost:${targetPort}`)
+    console.log(`[iiif] Health check: http://localhost:${targetPort}/health`)
+  })
 
-server.on('error', (error) => {
-  if (error && typeof error === 'object' && 'code' in error && error.code === 'EADDRINUSE') {
-    console.error(`IIIF Server port ${PORT} is already in use. Set IIIF_SERVER_PORT to a free port.`)
-  } else {
-    console.error('IIIF Server error:', error)
-  }
-  process.exit(1)
-})
+  server.on('error', (error) => {
+    if (error && typeof error === 'object' && 'code' in error && error.code === 'EADDRINUSE' && attempt < MAX_PORT_ATTEMPTS) {
+      const nextPort = targetPort + 1
+      console.warn(`[iiif] Port ${targetPort} is in use. Trying ${nextPort}...`)
+      setTimeout(() => startServer(desiredPort, attempt + 1), 200)
+      return
+    }
+
+    console.error('[iiif] Server error:', error)
+    process.exit(1)
+  })
+}
+
+startServer(PORT)
+

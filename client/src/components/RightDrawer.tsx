@@ -14,9 +14,15 @@ const RightDrawer: React.FC<RightDrawerProps> = ({ onPlanetSelect, onModeChange 
   const [activeMode, setActiveMode] = useState('story')
 
   const planets = [
+    { id: 'mercury', name: 'Mercury', color: '#8c7853' },
+    { id: 'venus', name: 'Venus', color: '#ffc649' },
     { id: 'earth', name: 'Earth', color: '#4488ff' },
     { id: 'moon', name: 'Moon', color: '#cccccc' },
-    { id: 'mars', name: 'Mars', color: '#ff4444' }
+    { id: 'mars', name: 'Mars', color: '#ff4444' },
+    { id: 'jupiter', name: 'Jupiter', color: '#d8ca9d' },
+    { id: 'saturn', name: 'Saturn', color: '#fad5a5' },
+    { id: 'uranus', name: 'Uranus', color: '#4fd0e7' },
+    { id: 'neptune', name: 'Neptune', color: '#4b70dd' }
   ]
 
   const modes = [

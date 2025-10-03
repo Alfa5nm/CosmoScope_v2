@@ -13,6 +13,24 @@ const PlanetHUD: React.FC<PlanetHUDProps> = ({ planetName, onTravel, onClose }) 
   const { playSound } = useAudio()
 
   const planetData = {
+    mercury: {
+      name: 'Mercury',
+      mass: '3.30 × 10²³ kg',
+      gravity: '3.7 m/s²',
+      age: '4.5 billion years',
+      missions: 'MESSENGER, BepiColombo',
+      description: 'The smallest planet and closest to the Sun.',
+      color: '#8c7853'
+    },
+    venus: {
+      name: 'Venus',
+      mass: '4.87 × 10²⁴ kg',
+      gravity: '8.87 m/s²',
+      age: '4.5 billion years',
+      missions: 'Venera, Magellan, Venus Express',
+      description: 'The hottest planet with a thick, toxic atmosphere.',
+      color: '#ffc649'
+    },
     earth: {
       name: 'Earth',
       mass: '5.97 × 10²⁴ kg',
@@ -39,6 +57,42 @@ const PlanetHUD: React.FC<PlanetHUDProps> = ({ planetName, onTravel, onClose }) 
       missions: 'Multiple robotic missions',
       description: 'The red planet, future target for human exploration.',
       color: '#ff4444'
+    },
+    jupiter: {
+      name: 'Jupiter',
+      mass: '1.90 × 10²⁷ kg',
+      gravity: '24.79 m/s²',
+      age: '4.5 billion years',
+      missions: 'Voyager, Galileo, Juno',
+      description: 'The largest planet, a gas giant with many moons.',
+      color: '#d8ca9d'
+    },
+    saturn: {
+      name: 'Saturn',
+      mass: '5.68 × 10²⁶ kg',
+      gravity: '10.44 m/s²',
+      age: '4.5 billion years',
+      missions: 'Voyager, Cassini-Huygens',
+      description: 'Famous for its spectacular ring system.',
+      color: '#fad5a5'
+    },
+    uranus: {
+      name: 'Uranus',
+      mass: '8.68 × 10²⁵ kg',
+      gravity: '8.69 m/s²',
+      age: '4.5 billion years',
+      missions: 'Voyager 2',
+      description: 'An ice giant that rotates on its side.',
+      color: '#4fd0e7'
+    },
+    neptune: {
+      name: 'Neptune',
+      mass: '1.02 × 10²⁶ kg',
+      gravity: '11.15 m/s²',
+      age: '4.5 billion years',
+      missions: 'Voyager 2',
+      description: 'The windiest planet in the solar system.',
+      color: '#4b70dd'
     }
   }
 

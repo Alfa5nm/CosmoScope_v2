@@ -8,9 +8,11 @@ export type ViewState = {
   planetId: PlanetId | null
   layerId: LayerId
   date: string
+  showWarnings: boolean
   setPlanet: (planet: PlanetId | null) => void
   setLayer: (layer: LayerId) => void
   setDate: (date: string) => void
+  setShowWarnings: (show: boolean) => void
 }
 
 const defaultLayer: LayerId = 'base'
@@ -21,6 +23,7 @@ export const useViewStore = create<ViewState>()(
       planetId: null,
       layerId: defaultLayer,
       date: todayISO(),
+      showWarnings: true,
       setPlanet: (planet) => {
         if (!planet) {
           set({ planetId: null, layerId: defaultLayer })
@@ -47,6 +50,9 @@ export const useViewStore = create<ViewState>()(
       },
       setDate: (date) => {
         set({ date })
+      },
+      setShowWarnings: (show) => {
+        set({ showWarnings: show })
       }
     }),
     {

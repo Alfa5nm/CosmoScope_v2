@@ -4,6 +4,7 @@ import { useTheme } from '../lib/ui/theme'
 import { useAudio } from '../lib/audio/AudioContext'
 import { loadThree, markLibraryLoaded } from '../lib/dynamicImports'
 import { useCosmicTransition } from '../lib/utils'
+import { usePoints } from '../lib/hooks/usePoints'
 import { GameState } from '../App'
 import RightDrawer from './RightDrawer'
 import PlanetHUD from './PlanetHUD'
@@ -20,6 +21,7 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
   const { theme } = useTheme()
   const { playSound } = useAudio()
   const { triggerTransition } = useCosmicTransition()
+  const { awardPoints } = usePoints()
   const containerRef = useRef<HTMLDivElement>(null)
   const sceneRef = useRef<any>(null) // Will be SolarSystemScene after loading
   const [selectedPlanet, setSelectedPlanet] = useState<string | null>(null)
@@ -125,6 +127,9 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
     playSound('click')
     
     if (isAccessible) {
+      // Award points for deep exploration
+      awardPoints('PLANET_EXPLORE')
+      
       // Show initial message for accessible planets
       setToast({ message: `🎯 FOCUSING ON ${planetName.toUpperCase()}...`, type: 'info' })
       
@@ -209,6 +214,8 @@ const SolarSystem: React.FC<SolarSystemProps> = ({ gameState, setGameState }) =>
 
     const planet = sceneRef.current.getPlanetAtPosition(x, y)
     if (planet) {
+      // Award points for planet click
+      awardPoints('PLANET_CLICK', e.clientX, e.clientY)
       handlePlanetClick(planet)
     }
   }

@@ -1,0 +1,6 @@
+{
+  "NASA_API_KEY": "SET_ME",
+  "PORT": 10000,
+  "ALLOWED_ORIGINS": ["https://cosmoscope.onrender.com"],
+  "DATABASE_PATH": "/opt/render/project/src/db.sqlite"
+}

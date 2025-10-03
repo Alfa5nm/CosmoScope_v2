@@ -97,3 +97,14 @@ temp/
 .Trashes
 ehthumbs.db
 Thumbs.db
+
+# Large files and binaries
+*.jar
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Cantaloupe files
+cantaloupe-*.jar
+cantaloupe/

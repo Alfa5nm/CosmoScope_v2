@@ -76,6 +76,8 @@ npm start
 - **Accessibility**: High contrast mode, reduced motion, keyboard navigation
 - **Audio System**: Ambient space sounds and interactive audio feedback
 - **Offline Support**: Local storage fallback when server is unavailable
+- **Tile Cache**: Optional filesystem or Redis caching for /api/tiles (configure via TILE_CACHE_* env vars)
+- **Raster Prep Toolkit**: `node scripts/prepare-raster.mjs {pyramid|iiif}` to stage GeoTIFFs for WMTS or IIIF delivery
 
 ## 🛠️ Technology Stack
 
@@ -175,6 +177,13 @@ NASA_API_KEY=your_nasa_api_key_here
 PORT=5174
 ALLOWED_ORIGINS=http://localhost:5173
 DATABASE_PATH=./db.sqlite
+TILE_CACHE_ENABLED=false
+TILE_CACHE_DIR=./tile-cache
+TILE_CACHE_TTL=3600
+TILE_CACHE_MAX_ENTRY_BYTES=2097152
+TILE_CACHE_REDIS_URL=redis://localhost:6379
+TILE_CACHE_NAMESPACE=cosmoscope_tiles
+IIIF_SERVER_PORT=8080
 ```
 
 ### NASA API Key

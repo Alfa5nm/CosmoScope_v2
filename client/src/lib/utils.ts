@@ -1,4 +1,4 @@
-// Utility functions for Cosmoscope
+﻿// Utility functions for Cosmoscope
 
 export const formatDate = (date: string | Date): string => {
   const d = new Date(date)
@@ -379,8 +379,9 @@ export const createCosmicOverlay = (type: CosmicTransitionType = 'cosmic-blink')
   const allElements = document.querySelectorAll('*')
   allElements.forEach(el => {
     if (el !== overlay) {
-      (el as HTMLElement).style.transition = 'opacity 0.3s ease'
-      ;(el as HTMLElement).style.opacity = '0.3'
+      const htmlElement = el as HTMLElement
+      htmlElement.style.transition = 'opacity 0.3s ease'
+      htmlElement.style.opacity = '0.3'
     }
   })
   
@@ -393,7 +394,8 @@ export const createCosmicOverlay = (type: CosmicTransitionType = 'cosmic-blink')
     // Restore opacity to all elements
     allElements.forEach(el => {
       if (el !== overlay) {
-        ;(el as HTMLElement).style.opacity = '1'
+        const htmlElement = el as HTMLElement
+        htmlElement.style.opacity = '1'
       }
     })
   }, 800)
@@ -427,4 +429,6 @@ export const useCosmicTransition = () => {
   
   return { triggerTransition }
 }
+
+
 

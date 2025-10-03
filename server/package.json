@@ -6,12 +6,27 @@
     "dev": "tsx watch server.ts",
     "build": "tsc",
     "start": "node dist/server.js",
+    "build:exe": "pkg dist/server.js --targets node18-win-x64 --output cosmoscope-server.exe",
     "lint": "eslint . --ext ts --report-unused-disable-directives --max-warnings 0",
     "typecheck": "tsc --noEmit"
   },
+  "pkg": {
+    "assets": [
+      "dist/**/*",
+      "node_modules/**/*",
+      "config/**/*",
+      "db.sqlite"
+    ],
+    "targets": [
+      "node18-win-x64"
+    ]
+  },
   "dependencies": {
+    "@types/better-sqlite3": "^7.6.13",
     "@types/uuid": "^9.0.7",
+    "better-sqlite3": "^12.4.1",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.3",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
     "node-fetch": "^3.3.2",
@@ -28,6 +43,8 @@
     "@typescript-eslint/eslint-plugin": "^6.14.0",
     "@typescript-eslint/parser": "^6.14.0",
     "eslint": "^8.55.0",
+    "nexe": "^5.0.0-beta.4",
+    "pkg": "^5.8.1",
     "tsx": "^4.6.2",
     "typescript": "^5.2.2"
   }

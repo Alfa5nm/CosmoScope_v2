@@ -19,6 +19,7 @@ export class SolarSystemScene {
   public planets: { [key: string]: THREE.Mesh } = {}
   public moons: { [key: string]: THREE.Mesh } = {}
   public orbits: { [key: string]: THREE.LineLoop } = {}
+  public meteorites: THREE.Points[] = []
   public animationId: number | null = null
   private keyStates: { [key: string]: boolean } = {}
   private moveSpeed: number = 0.5
@@ -144,6 +145,9 @@ export class SolarSystemScene {
     
     // Create enhanced starfield with different star types
     this.createEnhancedStarfield()
+    
+    // Create meteorite showers
+    this.createMeteoriteShowers()
   }
 
   private createHighResSpaceBackground(): void {
@@ -167,11 +171,14 @@ export class SolarSystemScene {
     const spaceMaterial = new THREE.MeshBasicMaterial({
       map: spaceTexture,
       side: THREE.BackSide,
-      transparent: false
+      transparent: true,
+      opacity: 0.3, // Make it more transparent so stars show through
+      depthWrite: false // Don't write to depth buffer
     })
     
     const spaceSphere = new THREE.Mesh(spaceGeometry, spaceMaterial)
     spaceSphere.name = 'space-background'
+    spaceSphere.renderOrder = -1 // Render first
     this.scene.add(spaceSphere)
   }
 
@@ -228,15 +235,88 @@ export class SolarSystemScene {
     
     const starMaterial = new THREE.PointsMaterial({
       vertexColors: true,
-      size: 1,
+      size: 2,
       transparent: true,
-      opacity: 0.9,
-      sizeAttenuation: true
+      opacity: 1.0,
+      sizeAttenuation: true,
+      depthTest: false // Always render on top
     })
     
     const stars = new THREE.Points(starGeometry, starMaterial)
     stars.name = 'starfield'
     this.scene.add(stars)
+  }
+
+  private createMeteoriteShowers(): void {
+    // Create multiple meteorite showers
+    for (let shower = 0; shower < 3; shower++) {
+      const meteoriteCount = 50
+      const meteoriteGeometry = new THREE.BufferGeometry()
+      const positions = new Float32Array(meteoriteCount * 3)
+      const velocities = new Float32Array(meteoriteCount * 3)
+      const colors = new Float32Array(meteoriteCount * 3)
+      const sizes = new Float32Array(meteoriteCount)
+      
+      for (let i = 0; i < meteoriteCount; i++) {
+        // Random starting position in a distant sphere
+        const radius = 800 + Math.random() * 400
+        const theta = Math.random() * Math.PI * 2
+        const phi = Math.acos(2 * Math.random() - 1)
+        
+        positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
+        positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
+        positions[i * 3 + 2] = radius * Math.cos(phi)
+        
+        // Random velocity towards center with some spread (slower speed)
+        const speed = 0.5 + Math.random() * 1.0
+        const direction = new THREE.Vector3(
+          -positions[i * 3],
+          -positions[i * 3 + 1],
+          -positions[i * 3 + 2]
+        ).normalize()
+        
+        // Add some randomness to direction
+        direction.x += (Math.random() - 0.5) * 0.5
+        direction.y += (Math.random() - 0.5) * 0.5
+        direction.z += (Math.random() - 0.5) * 0.5
+        direction.normalize().multiplyScalar(speed)
+        
+        velocities[i * 3] = direction.x
+        velocities[i * 3 + 1] = direction.y
+        velocities[i * 3 + 2] = direction.z
+        
+        // Meteorite colors (hot white/orange)
+        colors[i * 3] = 1
+        colors[i * 3 + 1] = 0.7 + Math.random() * 0.3
+        colors[i * 3 + 2] = 0.3 + Math.random() * 0.4
+        
+        sizes[i] = Math.random() * 2 + 0.5
+      }
+      
+      meteoriteGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+      meteoriteGeometry.setAttribute('velocity', new THREE.BufferAttribute(velocities, 3))
+      meteoriteGeometry.setAttribute('color', new THREE.BufferAttribute(colors, 3))
+      meteoriteGeometry.setAttribute('size', new THREE.BufferAttribute(sizes, 1))
+      
+      const meteoriteMaterial = new THREE.PointsMaterial({
+        vertexColors: true,
+        size: 2,
+        transparent: true,
+        opacity: 0.8,
+        sizeAttenuation: true,
+        blending: THREE.AdditiveBlending
+      })
+      
+      const meteoriteShower = new THREE.Points(meteoriteGeometry, meteoriteMaterial)
+      meteoriteShower.name = `meteorite-shower-${shower}`
+      meteoriteShower.userData = { 
+        shower: shower,
+        resetTime: Math.random() * 10000 // Random reset timing
+      }
+      
+      this.meteorites.push(meteoriteShower)
+      this.scene.add(meteoriteShower)
+    }
   }
 
 
@@ -253,32 +333,45 @@ export class SolarSystemScene {
     this.sun.receiveShadow = true
     this.scene.add(this.sun)
     
-    // Add realistic corona effect
-    const coronaGeometry = new THREE.SphereGeometry(this.config.sunRadius * 1.3, 64, 64)
-    const coronaMaterial = new THREE.MeshBasicMaterial({
-      color: 0xffaa00,
-      transparent: true,
-      opacity: 0.4,
-      side: THREE.BackSide
+    // Add natural glow effect using a single corona with gradient
+    const coronaGeometry = new THREE.SphereGeometry(this.config.sunRadius * 2.5, 64, 64)
+    const coronaMaterial = new THREE.ShaderMaterial({
+      uniforms: {
+        time: { value: 0.0 },
+        glowColor: { value: new THREE.Color(0xffaa00) }
+      },
+      vertexShader: `
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        void main() {
+          vNormal = normalize(normalMatrix * normal);
+          vPosition = position;
+          gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+        }
+      `,
+      fragmentShader: `
+        uniform float time;
+        uniform vec3 glowColor;
+        varying vec3 vNormal;
+        varying vec3 vPosition;
+        
+        void main() {
+          float intensity = pow(0.6 - dot(vNormal, vec3(0.0, 0.0, 1.0)), 2.0);
+          float flicker = 0.9 + 0.1 * sin(time * 3.0 + vPosition.x * 10.0);
+          intensity *= flicker;
+          
+          vec3 glow = glowColor * intensity;
+          gl_FragColor = vec4(glow, intensity * 0.3);
+        }
+      `,
+      side: THREE.BackSide,
+      blending: THREE.AdditiveBlending,
+      transparent: true
     })
     
     const corona = new THREE.Mesh(coronaGeometry, coronaMaterial)
     corona.name = 'sun-corona'
     this.scene.add(corona)
-    
-    // Add multiple glow layers for realistic sun effect
-    for (let i = 0; i < 8; i++) {
-      const glowGeometry = new THREE.SphereGeometry(this.config.sunRadius * (1.5 + i * 0.3), 32, 32)
-      const glowMaterial = new THREE.MeshBasicMaterial({
-        color: 0xffaa00,
-        transparent: true,
-        opacity: 0.08 - i * 0.008
-      })
-      
-      const glow = new THREE.Mesh(glowGeometry, glowMaterial)
-      glow.name = `sun-glow-${i}`
-      this.scene.add(glow)
-    }
   }
 
   private createPlanets(): void {
@@ -291,7 +384,7 @@ export class SolarSystemScene {
         size: 0.3,
         rotationSpeed: 0.05, // Mercury: 58.6 Earth days
         orbitSpeed: 0.04, // Mercury: 88 Earth days
-        textureUrl: null
+        textureUrl: 'https://threejs.org/examples/textures/planets/mercury_1024.jpg'
       },
       { 
         name: 'venus', 
@@ -301,7 +394,7 @@ export class SolarSystemScene {
         size: 0.5,
         rotationSpeed: -0.02, // Venus: retrograde rotation, 243 Earth days
         orbitSpeed: 0.015, // Venus: 225 Earth days
-        textureUrl: null
+        textureUrl: 'https://threejs.org/examples/textures/planets/venus_surface_1024.jpg'
       },
       { 
         name: 'earth', 
@@ -311,7 +404,7 @@ export class SolarSystemScene {
         size: 0.6,
         rotationSpeed: 0.01, // Earth: 1 day
         orbitSpeed: 0.01, // Earth: 365 days
-        textureUrl: 'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/earth_atmos_2048.jpg'
+        textureUrl: 'https://threejs.org/examples/textures/planets/earth_atmos_2048.jpg'
       },
       { 
         name: 'mars', 
@@ -321,7 +414,7 @@ export class SolarSystemScene {
         size: 0.5,
         rotationSpeed: 0.009, // Mars: 1.03 Earth days
         orbitSpeed: 0.008, // Mars: 687 Earth days
-        textureUrl: null
+        textureUrl: 'https://threejs.org/examples/textures/planets/mars_1024.jpg'
       },
       { 
         name: 'jupiter', 
@@ -331,7 +424,7 @@ export class SolarSystemScene {
         size: 1.2,
         rotationSpeed: 0.025, // Jupiter: 0.41 Earth days
         orbitSpeed: 0.004, // Jupiter: 12 Earth years
-        textureUrl: null
+        textureUrl: 'https://threejs.org/examples/textures/planets/jupiter_1024.jpg'
       },
       { 
         name: 'saturn', 
@@ -341,7 +434,27 @@ export class SolarSystemScene {
         size: 1.0,
         rotationSpeed: 0.022, // Saturn: 0.45 Earth days
         orbitSpeed: 0.003, // Saturn: 29 Earth years
-        textureUrl: null
+        textureUrl: 'https://threejs.org/examples/textures/planets/saturn_1024.jpg'
+      },
+      { 
+        name: 'uranus', 
+        color: 0x4fd0e7, 
+        emissive: 0x002244,
+        distance: 42, 
+        size: 0.8,
+        rotationSpeed: -0.015, // Uranus: retrograde rotation, 17.2 Earth hours
+        orbitSpeed: 0.0015, // Uranus: 84 Earth years
+        textureUrl: 'https://threejs.org/examples/textures/planets/uranus_1024.jpg'
+      },
+      { 
+        name: 'neptune', 
+        color: 0x4b70dd, 
+        emissive: 0x001144,
+        distance: 55, 
+        size: 0.75,
+        rotationSpeed: 0.018, // Neptune: 16.1 Earth hours
+        orbitSpeed: 0.001, // Neptune: 165 Earth years
+        textureUrl: 'https://threejs.org/examples/textures/planets/neptune_1024.jpg'
       }
     ]
     
@@ -366,8 +479,9 @@ export class SolarSystemScene {
           (texture) => {
             texture.wrapS = THREE.RepeatWrapping
             texture.wrapT = THREE.RepeatWrapping
+            texture.colorSpace = THREE.SRGBColorSpace
 
-            mesh.material = new THREE.MeshPhongMaterial({
+            const newMaterial = new THREE.MeshPhongMaterial({
               map: texture,
               emissive: planet.emissive,
               shininess: 30,
@@ -375,15 +489,25 @@ export class SolarSystemScene {
               bumpScale: 0.1,
               transparent: false
             })
+            
+            // Dispose old material and apply new one
+            if (mesh.material && mesh.material !== baseMaterial) {
+              (mesh.material as THREE.Material).dispose()
+            }
+            mesh.material = newMaterial
+            
+            console.log(`Successfully loaded texture for ${planet.name}`)
           },
-          undefined,
+          (progress) => {
+            console.log(`Loading texture for ${planet.name}: ${(progress.loaded / progress.total * 100)}%`)
+          },
           (error) => {
             console.warn(`Failed to load texture for ${planet.name}:`, error)
+            console.log(`Falling back to base material for ${planet.name}`)
           }
         )
       }
 
-      const meshRotateSpeed = planet.rotationSpeed
 
       mesh.position.x = planet.distance
       mesh.castShadow = true
@@ -444,9 +568,14 @@ export class SolarSystemScene {
     
     // Load real Moon texture with error handling
     const moonTexture = textureLoader.load(
-      'https://raw.githubusercontent.com/mrdoob/three.js/master/examples/textures/planets/moon_1024.jpg',
-      undefined, // onLoad
-      undefined, // onProgress
+      'https://threejs.org/examples/textures/planets/moon_1024.jpg',
+      (texture) => {
+        texture.colorSpace = THREE.SRGBColorSpace
+        console.log('Successfully loaded Moon texture')
+      },
+      (progress) => {
+        console.log(`Loading Moon texture: ${(progress.loaded / progress.total * 100)}%`)
+      },
       (error) => {
         console.warn('Failed to load moon texture:', error)
       }
@@ -455,7 +584,8 @@ export class SolarSystemScene {
     const moonMaterial = new THREE.MeshPhongMaterial({ 
       map: moonTexture,
       emissive: 0x111111,
-      shininess: 5
+      shininess: 5,
+      color: 0xaaaaaa // Fallback color if texture fails
     })
     
     const moon = new THREE.Mesh(moonGeometry, moonMaterial)
@@ -498,7 +628,10 @@ export class SolarSystemScene {
       { name: 'earth', radius: 8 },
       { name: 'mars', radius: 12 },
       { name: 'jupiter', radius: 20 },
-      { name: 'saturn', radius: 30 }
+      { name: 'saturn', radius: 30 },
+      { name: 'uranus', radius: 42 },
+      { name: 'neptune', radius: 55 },
+      { name: 'moon', radius: 1.5, parentPlanet: 'earth' }
     ]
     
     orbitData.forEach(orbit => {
@@ -507,22 +640,39 @@ export class SolarSystemScene {
       
       for (let i = 0; i <= segments; i++) {
         const angle = (i / segments) * Math.PI * 2
-        points.push(new THREE.Vector3(
-          Math.cos(angle) * orbit.radius,
-          0,
-          Math.sin(angle) * orbit.radius
-        ))
+        if (orbit.parentPlanet) {
+          // For moons, create orbit relative to parent planet position
+          points.push(new THREE.Vector3(
+            Math.cos(angle) * orbit.radius,
+            0,
+            Math.sin(angle) * orbit.radius
+          ))
+        } else {
+          // For planets, create orbit around sun
+          points.push(new THREE.Vector3(
+            Math.cos(angle) * orbit.radius,
+            0,
+            Math.sin(angle) * orbit.radius
+          ))
+        }
       }
       
       const geometry = new THREE.BufferGeometry().setFromPoints(points)
       const material = new THREE.LineBasicMaterial({
-        color: 0x00ffff,
+        color: orbit.name === 'moon' ? 0xaaaaaa : 0x00ffff,
         transparent: true,
-        opacity: 0.2
+        opacity: orbit.name === 'moon' ? 0.4 : 0.2
       })
       
       const orbitLine = new THREE.LineLoop(geometry, material)
+      orbitLine.name = `${orbit.name}-orbit`
       this.orbits[orbit.name] = orbitLine
+      
+      if (orbit.parentPlanet) {
+        // Add moon orbit to the scene, will be positioned relative to parent planet in animation
+        orbitLine.userData = { parentPlanet: orbit.parentPlanet }
+      }
+      
       this.scene.add(orbitLine)
     })
   }
@@ -540,20 +690,11 @@ export class SolarSystemScene {
     this.sun.rotation.x += this.config.rotationSpeed * 0.3
     this.sun.scale.setScalar(1 + Math.sin(time * 2) * 0.05) // Subtle pulsing
     
-    // Animate sun glow layers
-    for (let i = 0; i < 8; i++) {
-      const glow = this.scene.getObjectByName(`sun-glow-${i}`)
-      if (glow) {
-        glow.rotation.y += this.config.rotationSpeed * (0.5 + i * 0.1)
-        glow.scale.setScalar(1 + Math.sin(time * 3 + i) * 0.02)
-      }
-    }
-    
-    // Animate sun corona
-    const corona = this.scene.getObjectByName('sun-corona')
-    if (corona) {
-      corona.rotation.y += this.config.rotationSpeed * 0.8
-      corona.scale.setScalar(1 + Math.sin(time * 1.5) * 0.03)
+    // Animate sun corona with natural glow
+    const corona = this.scene.getObjectByName('sun-corona') as THREE.Mesh
+    if (corona && corona.material instanceof THREE.ShaderMaterial) {
+      corona.material.uniforms.time.value = time
+      corona.rotation.y += this.config.rotationSpeed * 0.3
     }
     
     // Animate planets with individual rotation and orbit speeds
@@ -593,6 +734,12 @@ export class SolarSystemScene {
         moon.position.x = parentPlanet.position.x + Math.cos(moonOrbitTime) * userData.orbitRadius
         moon.position.z = parentPlanet.position.z + Math.sin(moonOrbitTime) * userData.orbitRadius
         moon.position.y = parentPlanet.position.y + Math.sin(moonOrbitTime * 0.3) * 0.1
+        
+        // Update moon orbit position
+        const moonOrbit = this.orbits['moon']
+        if (moonOrbit) {
+          moonOrbit.position.copy(parentPlanet.position)
+        }
       }
     })
     
@@ -601,6 +748,57 @@ export class SolarSystemScene {
     if (starfield) {
       starfield.rotation.y += 0.0005
     }
+    
+    // Animate meteorite showers
+    this.meteorites.forEach((meteoriteShower) => {
+      const positions = meteoriteShower.geometry.attributes.position.array as Float32Array
+      const velocities = meteoriteShower.geometry.attributes.velocity.array as Float32Array
+      const meteoriteCount = positions.length / 3
+      
+      for (let i = 0; i < meteoriteCount; i++) {
+        // Update positions based on velocity (slower movement)
+        positions[i * 3] += velocities[i * 3] * 0.1
+        positions[i * 3 + 1] += velocities[i * 3 + 1] * 0.1
+        positions[i * 3 + 2] += velocities[i * 3 + 2] * 0.1
+        
+        // Reset meteorite if it gets too close to center or too far away
+        const distance = Math.sqrt(
+          positions[i * 3] * positions[i * 3] +
+          positions[i * 3 + 1] * positions[i * 3 + 1] +
+          positions[i * 3 + 2] * positions[i * 3 + 2]
+        )
+        
+        if (distance < 10 || distance > 1500) {
+          // Reset to new random position
+          const radius = 800 + Math.random() * 400
+          const theta = Math.random() * Math.PI * 2
+          const phi = Math.acos(2 * Math.random() - 1)
+          
+          positions[i * 3] = radius * Math.sin(phi) * Math.cos(theta)
+          positions[i * 3 + 1] = radius * Math.sin(phi) * Math.sin(theta)
+          positions[i * 3 + 2] = radius * Math.cos(phi)
+          
+          // Reset velocity (slower speed)
+          const speed = 0.5 + Math.random() * 1.0
+          const direction = new THREE.Vector3(
+            -positions[i * 3],
+            -positions[i * 3 + 1],
+            -positions[i * 3 + 2]
+          ).normalize()
+          
+          direction.x += (Math.random() - 0.5) * 0.5
+          direction.y += (Math.random() - 0.5) * 0.5
+          direction.z += (Math.random() - 0.5) * 0.5
+          direction.normalize().multiplyScalar(speed)
+          
+          velocities[i * 3] = direction.x
+          velocities[i * 3 + 1] = direction.y
+          velocities[i * 3 + 2] = direction.z
+        }
+      }
+      
+      meteoriteShower.geometry.attributes.position.needsUpdate = true
+    })
     
     this.controls.update()
     this.renderer.render(this.scene, this.camera)
@@ -699,7 +897,7 @@ export class SolarSystemScene {
     
     // Dispose geometries and materials
     this.scene.traverse((object) => {
-      if (object instanceof THREE.Mesh) {
+      if (object instanceof THREE.Mesh || object instanceof THREE.Points) {
         object.geometry.dispose()
         if (Array.isArray(object.material)) {
           object.material.forEach(material => material.dispose())

@@ -1,0 +1,20 @@
+services:
+  - type: web
+    name: cosmoscope
+    env: node
+    plan: free
+    buildCommand: npm run install:all && npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: NASA_API_KEY
+        sync: false
+      - key: ALLOWED_ORIGINS
+        value: https://cosmoscope.onrender.com
+      - key: DATABASE_PATH
+        value: /opt/render/project/src/db.sqlite
+      - key: TILE_CACHE_ENABLED
+        value: false

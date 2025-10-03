@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import { loadMapLibre, markLibraryLoaded } from '../lib/dynamicImports'
 import { getLayerZoomLimits, layerSupportsTime, getPlanetConfig, type PlanetId, type LayerId } from '../config/planetLayers'
+import { useCountryStore } from '../store/countryStore'
 
 const envApiUrl = import.meta.env.VITE_API_BASE_URL?.trim()
 const API_BASE_URL = envApiUrl && envApiUrl.length > 0 ? envApiUrl.replace(/\/+$/, '') : ''
@@ -140,24 +141,64 @@ interface Map2DProps {
   date: string
   layer: string
   labels: any[]
+  showWarnings: boolean
   onLabelClick: (label: any) => void
+  mapContainerRef?: React.RefObject<HTMLDivElement>
+  mapInstanceRef?: React.MutableRefObject<any>
+  showCountries?: boolean
+  onCountryClick?: (country: any) => void
+  onPOIClick?: (poi: any) => void
 }
 
-const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick }) => {
-  const mapContainer = useRef<HTMLDivElement>(null)
-  const map = useRef<any>(null) // Will be maplibregl.Map after loading
+const Map2D: React.FC<Map2DProps> = ({ 
+  planet, 
+  date, 
+  layer, 
+  labels, 
+  showWarnings, 
+  onLabelClick,
+  mapContainerRef,
+  mapInstanceRef,
+  showCountries = false,
+  onCountryClick,
+  onPOIClick
+}) => {
+  const mapContainer = mapContainerRef || useRef<HTMLDivElement>(null)
+  const map = mapInstanceRef || useRef<any>(null) // Will be maplibregl.Map after loading
   const apolloMarkersRef = useRef<any[]>([])
   const userMarkersRef = useRef<any[]>([])
-  const loadTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const countryMarkersRef = useRef<any[]>([])
+  const poiMarkersRef = useRef<any[]>([])
+  const loadTimeoutRef = useRef<number | null>(null)
   const [isLoaded, setIsLoaded] = useState(false)
   const [hasError, setHasError] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [errorDetails, setErrorDetails] = useState<string | null>(null)
+  const [errorType, setErrorType] = useState<'error' | 'warning' | 'info'>('error')
   const [maplibregl, setMaplibregl] = useState<any>(null)
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(true)
+  
+  // Country store for markers
+  const { 
+    isEnabled: countriesEnabled, 
+    selectedCountry, 
+    selectedPOI, 
+    hoveredCountry,
+    setSelectedCountry,
+    setSelectedPOI,
+    setHoveredCountry,
+    getCountriesWithPOI 
+  } = useCountryStore()
 
   const planetId = toPlanetId(planet)
   const layerId = resolveLayerId(planetId, layer)
+
+  const hideError = () => {
+    setHasError(false)
+    setErrorMessage(null)
+    setErrorDetails(null)
+    setErrorType('error')
+  }
 
   // Load MapLibre GL dynamically
   useEffect(() => {
@@ -294,6 +335,13 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
     // Add navigation controls
     map.current.addControl(new maplibregl.NavigationControl(), 'top-right')
 
+    // Ensure map container is properly sized immediately
+    setTimeout(() => {
+      if (map.current) {
+        map.current.resize()
+      }
+    }, 50)
+
     // Handle map load
     map.current.on('load', () => {
       console.log('Map loaded successfully')
@@ -301,31 +349,57 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
         clearTimeout(loadTimeoutRef.current)
         loadTimeoutRef.current = null
       }
+      
+      // Ensure map is properly sized and centered
+      setTimeout(() => {
+        if (map.current) {
+          map.current.resize()
+          // Fit the map to show the whole world properly
+          if (planet === 'earth') {
+            console.log('🌍 Fitting map bounds to show full world: [-180, -85] to [180, 85]')
+            map.current.fitBounds([[-180, -85], [180, 85]], {
+              padding: 20,
+              duration: 0 // No animation on initial load
+            })
+            
+            // Debug: Log current bounds after fitBounds
+            setTimeout(() => {
+              if (map.current) {
+                const bounds = map.current.getBounds()
+                console.log('🗺️ Current map bounds after fitBounds:', {
+                  west: bounds.getWest(),
+                  east: bounds.getEast(), 
+                  south: bounds.getSouth(),
+                  north: bounds.getNorth()
+                })
+                console.log('🔍 Current zoom level:', map.current.getZoom())
+              }
+            }, 200)
+          }
+        }
+      }, 100)
+      
       setIsLoaded(true)
       hideError()
       addApolloMarkers()
       addUserLabels()
     })
 
-    const showError = (message?: string, details?: any) => {
+    const showError = (message?: string, details?: any, type: 'error' | 'warning' | 'info' = 'error') => {
       if (message) {
         const enhancedMessage = generateErrorMessage(message, planet, layer, date)
         setErrorMessage(enhancedMessage)
       }
       setErrorDetails(formatErrorDetails(details))
+      setErrorType(type)
       setHasError(true)
     }
 
-    const hideError = () => {
-      setHasError(false)
-      setErrorMessage(null)
-      setErrorDetails(null)
-    }
 
     loadTimeoutRef.current = window.setTimeout(() => {
       if (!isLoaded) {
-        console.warn('Map tiles taking too long to load, showing error')
-        showError('Map tiles are taking too long to load. This might indicate a server connection issue.')
+        console.warn('Map tiles taking too long to load, showing warning')
+        showError('Map tiles are taking too long to load. This might indicate a server connection issue.', null, 'warning')
       }
     }, 10000)
 
@@ -600,6 +674,192 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
     }
   }, [labels, isLoaded])
 
+  // Add country markers
+  const addCountryMarkers = () => {
+    if (!map.current || !maplibregl || planet !== 'earth' || !showCountries || !countriesEnabled) return
+
+    // Clear existing markers
+    countryMarkersRef.current.forEach(marker => marker.remove())
+    countryMarkersRef.current = []
+
+    const countriesWithPOI = getCountriesWithPOI()
+
+    countriesWithPOI.forEach(country => {
+      const isSelected = selectedCountry === country.code
+      const isHovered = hoveredCountry === country.code
+
+      const markerElement = document.createElement('div')
+      markerElement.style.cssText = `
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        background-color: ${isSelected 
+          ? 'rgba(0, 255, 255, 0.3)' 
+          : isHovered 
+            ? 'rgba(255, 255, 255, 0.2)' 
+            : 'rgba(255, 255, 255, 0.1)'};
+        border: ${isSelected 
+          ? '3px solid #00ffff' 
+          : '2px solid rgba(255, 255, 255, 0.5)'};
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        font-weight: bold;
+        color: white;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        transition: all 0.3s ease;
+        backdrop-filter: blur(2px);
+      `
+      markerElement.innerHTML = '<span style="font-size: 10px;">🏛️</span>'
+      markerElement.title = `${country.name} (${country.pointsOfInterest.length} POIs)`
+
+      markerElement.addEventListener('click', (e) => {
+        e.stopPropagation()
+        if (selectedCountry === country.code) {
+          setSelectedCountry(null)
+        } else {
+          setSelectedCountry(country.code)
+          onCountryClick?.(country)
+        }
+      })
+
+      markerElement.addEventListener('mouseenter', () => {
+        setHoveredCountry(country.code)
+      })
+
+      markerElement.addEventListener('mouseleave', () => {
+        setHoveredCountry(null)
+      })
+
+      const marker = new maplibregl.Marker({
+        element: markerElement
+      })
+        .setLngLat(country.center)
+        .addTo(map.current!)
+
+      countryMarkersRef.current.push(marker)
+    })
+  }
+
+  // Add POI markers
+  const addPOIMarkers = () => {
+    if (!map.current || !maplibregl || planet !== 'earth' || !showCountries || !countriesEnabled) return
+
+    // Clear existing markers
+    poiMarkersRef.current.forEach(marker => marker.remove())
+    poiMarkersRef.current = []
+
+    const countriesWithPOI = getCountriesWithPOI()
+
+    countriesWithPOI.forEach(country => {
+      country.pointsOfInterest.forEach(poi => {
+        const showPOI = selectedCountry === poi.countryCode || selectedCountry === null
+        if (!showPOI) return
+
+        const isSelected = selectedPOI === poi.id
+
+        const getCategoryIcon = (category: string) => {
+          switch (category) {
+            case 'landmark': return '🏛️'
+            case 'natural': return '🏔️'
+            case 'cultural': return '🎭'
+            case 'historical': return '🏺'
+            case 'modern': return '🏢'
+            default: return '📍'
+          }
+        }
+
+        const getCategoryColor = (category: string) => {
+          switch (category) {
+            case 'landmark': return '#ff6b6b'
+            case 'natural': return '#51cf66'
+            case 'cultural': return '#845ef7'
+            case 'historical': return '#fd7e14'
+            case 'modern': return '#339af0'
+            default: return '#868e96'
+          }
+        }
+
+        const markerElement = document.createElement('div')
+        markerElement.style.cssText = `
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background-color: ${getCategoryColor(poi.category)};
+          border: ${isSelected 
+            ? '3px solid #00ffff' 
+            : '2px solid white'};
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 14px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+          transition: all 0.3s ease;
+          transform: ${isSelected ? 'scale(1.2)' : 'scale(1)'};
+        `
+        markerElement.innerHTML = getCategoryIcon(poi.category)
+        markerElement.title = `${poi.name} - ${poi.category}`
+
+        markerElement.addEventListener('click', (e) => {
+          e.stopPropagation()
+          if (selectedPOI === poi.id) {
+            setSelectedPOI(null)
+          } else {
+            setSelectedPOI(poi.id)
+            onPOIClick?.(poi)
+          }
+        })
+
+        markerElement.addEventListener('mouseenter', () => {
+          markerElement.style.transform = isSelected ? 'scale(1.3)' : 'scale(1.1)'
+        })
+
+        markerElement.addEventListener('mouseleave', () => {
+          markerElement.style.transform = isSelected ? 'scale(1.2)' : 'scale(1)'
+        })
+
+        const marker = new maplibregl.Marker({
+          element: markerElement
+        })
+          .setLngLat(poi.coordinates)
+          .addTo(map.current!)
+
+        poiMarkersRef.current.push(marker)
+      })
+    })
+  }
+
+  // Update country markers when dependencies change
+  useEffect(() => {
+    if (isLoaded && showCountries && countriesEnabled) {
+      addCountryMarkers()
+      addPOIMarkers()
+    } else {
+      // Clear markers when countries are disabled
+      countryMarkersRef.current.forEach(marker => marker.remove())
+      poiMarkersRef.current.forEach(marker => marker.remove())
+      countryMarkersRef.current = []
+      poiMarkersRef.current = []
+    }
+  }, [isLoaded, showCountries, countriesEnabled, selectedCountry, selectedPOI, hoveredCountry])
+
+  // Handle window resize to ensure map stays properly sized
+  useEffect(() => {
+    const handleResize = () => {
+      if (map.current && isLoaded) {
+        setTimeout(() => {
+          map.current?.resize()
+        }, 100)
+      }
+    }
+
+    window.addEventListener('resize', handleResize)
+    return () => window.removeEventListener('resize', handleResize)
+  }, [isLoaded])
+
   return (
     <div
       ref={mapContainer}
@@ -607,7 +867,8 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
         width: '100%',
         height: '100%',
         position: 'relative',
-        background: planet === 'earth' ? '#1a4d8c' : planet === 'moon' ? '#8c8c8c' : '#8b4513'
+        background: planet === 'earth' ? '#1a4d8c' : planet === 'moon' ? '#8c8c8c' : '#8b4513',
+        overflow: 'hidden' // Ensure no scrollbars appear
       }}
     >
       {/* Fallback content if map fails to load */}
@@ -635,63 +896,108 @@ const Map2D: React.FC<Map2DProps> = ({ planet, date, layer, labels, onLabelClick
       )}
 
       {/* Enhanced error overlay with specific messages */}
-      {hasError && (
+      {hasError && showWarnings && (
         <div
           style={{
             position: 'absolute',
             top: '10px',
-            left: '10px',
             right: '10px',
-            background: 'rgba(255, 0, 0, 0.9)',
+            maxWidth: '400px',
+            minWidth: '300px',
+            background: errorType === 'error' 
+              ? 'rgba(255, 0, 0, 0.95)' 
+              : errorType === 'warning' 
+                ? 'rgba(255, 165, 0, 0.95)' 
+                : 'rgba(0, 123, 255, 0.95)',
             color: 'white',
-            padding: '16px',
-            borderRadius: '8px',
+            padding: '12px',
+            borderRadius: '6px',
             fontFamily: 'Courier New, monospace',
-            fontSize: '14px',
+            fontSize: '12px',
             zIndex: 1000,
-            border: '2px solid rgba(255, 255, 255, 0.3)',
-            boxShadow: '0 4px 20px rgba(0, 0, 0, 0.5)'
+            border: `1px solid ${
+              errorType === 'error' 
+                ? 'rgba(255, 255, 255, 0.3)' 
+                : errorType === 'warning' 
+                  ? 'rgba(255, 255, 255, 0.5)' 
+                  : 'rgba(255, 255, 255, 0.4)'
+            }`,
+            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.3)',
+            backdropFilter: 'blur(4px)'
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', marginBottom: '8px' }}>
-            <span style={{ fontSize: '18px', marginRight: '8px' }}>⚠️</span>
-            <strong style={{ fontSize: '16px' }}>Map Loading Error</strong>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
+            <div style={{ display: 'flex', alignItems: 'center' }}>
+              <span style={{ fontSize: '14px', marginRight: '6px' }}>
+                {errorType === 'error' ? '❌' : errorType === 'warning' ? '⚠️' : 'ℹ️'}
+              </span>
+              <strong style={{ fontSize: '13px' }}>
+                {errorType === 'error' ? 'Error' : errorType === 'warning' ? 'Warning' : 'Info'}
+              </strong>
+            </div>
+            <button
+              onClick={hideError}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: 'white',
+                fontSize: '14px',
+                cursor: 'pointer',
+                padding: '2px 4px',
+                borderRadius: '3px',
+                opacity: 0.7,
+                transition: 'opacity 0.2s ease',
+                lineHeight: 1
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.opacity = '1'
+                e.currentTarget.style.background = 'rgba(255, 255, 255, 0.1)'
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.opacity = '0.7'
+                e.currentTarget.style.background = 'transparent'
+              }}
+              title="Dismiss message"
+            >
+              ✕
+            </button>
           </div>
           
-          <div style={{ marginBottom: '12px', lineHeight: 1.4 }}>
+          <div style={{ marginBottom: '8px', lineHeight: 1.3, fontSize: '11px' }}>
             {errorMessage}
           </div>
           
           {/* Action suggestions based on error type */}
-          <div style={{ fontSize: '12px', opacity: 0.9, borderTop: '1px solid rgba(255, 255, 255, 0.3)', paddingTop: '8px' }}>
+          <div style={{ fontSize: '10px', opacity: 0.8, borderTop: '1px solid rgba(255, 255, 255, 0.2)', paddingTop: '6px' }}>
             {errorMessage?.includes('server') && (
-              <div>💡 Try refreshing the page or check if the server is running</div>
+              <div>💡 Try refreshing or check server</div>
             )}
             {errorMessage?.includes('date') && (
-              <div>💡 Try selecting a different date or layer</div>
+              <div>💡 Try different date/layer</div>
             )}
             {errorMessage?.includes('API key') && (
-              <div>💡 Check your NASA API key configuration</div>
+              <div>💡 Check NASA API key</div>
             )}
             {errorMessage?.includes('Rate limit') && (
-              <div>💡 Wait a moment before trying again</div>
+              <div>💡 Wait before retrying</div>
             )}
             {errorMessage?.includes('CORS') && (
-              <div>💡 Check server CORS settings</div>
+              <div>💡 Check CORS settings</div>
             )}
           </div>
           
           {/* Technical details (collapsible) */}
           {errorDetails && (
-            <details style={{ marginTop: '8px', fontSize: '11px', opacity: 0.8 }}>
-              <summary style={{ cursor: 'pointer', marginBottom: '4px' }}>Technical Details</summary>
+            <details style={{ marginTop: '6px', fontSize: '9px', opacity: 0.7 }}>
+              <summary style={{ cursor: 'pointer', marginBottom: '3px', fontSize: '10px' }}>Details</summary>
               <pre style={{ 
-                background: 'rgba(0, 0, 0, 0.3)', 
-                padding: '8px', 
-                borderRadius: '4px', 
+                background: 'rgba(0, 0, 0, 0.2)', 
+                padding: '4px', 
+                borderRadius: '3px', 
                 overflow: 'auto',
-                maxHeight: '100px',
-                fontSize: '10px'
+                maxHeight: '60px',
+                fontSize: '8px',
+                lineHeight: 1.2
               }}>
                 {errorDetails}
               </pre>
