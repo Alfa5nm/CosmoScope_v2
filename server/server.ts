@@ -128,7 +128,28 @@ app.use(express.json({ limit: '10mb' }))
 app.use(express.urlencoded({ extended: true, limit: '10mb' }))
 
 // Serve static files from client build
-app.use(express.static(join(__dirname, '../client/dist')))
+// Try multiple possible paths for client build
+const possiblePaths = [
+  join(__dirname, '../client/dist'),           // Development: server/dist -> client/dist
+  join(process.cwd(), 'client/dist'),          // Production: /app -> client/dist
+  join(process.cwd(), 'dist'),                 // Alternative: /app -> dist
+  join(__dirname, '../../client/dist'),        // Alternative: server/dist -> ../../client/dist
+]
+
+let staticPath = possiblePaths[0]
+for (const path of possiblePaths) {
+  if (fs.existsSync(path)) {
+    staticPath = path
+    break
+  }
+}
+
+console.log('Serving static files from:', staticPath)
+console.log('Static path exists:', fs.existsSync(staticPath))
+if (fs.existsSync(staticPath)) {
+  console.log('Static directory contents:', fs.readdirSync(staticPath))
+}
+app.use(express.static(staticPath))
 
 // API Routes
 app.use('/api', nasaRoutes)
@@ -187,7 +208,37 @@ app.get('/api/config', (req, res) => {
 
 // Catch-all handler: send back React's index.html file for client-side routing
 app.get('*', (req, res) => {
-  res.sendFile(join(__dirname, '../client/dist/index.html'))
+  // Use the same path resolution logic as static files
+  const possibleIndexPaths = [
+    join(staticPath, 'index.html'),
+    join(__dirname, '../client/dist/index.html'),
+    join(process.cwd(), 'client/dist/index.html'),
+    join(process.cwd(), 'dist/index.html'),
+  ]
+  
+  let indexPath = possibleIndexPaths[0]
+  for (const path of possibleIndexPaths) {
+    if (fs.existsSync(path)) {
+      indexPath = path
+      break
+    }
+  }
+  
+  console.log('Looking for index.html at:', indexPath)
+  console.log('Current working directory:', process.cwd())
+  console.log('__dirname:', __dirname)
+  
+  if (!fs.existsSync(indexPath)) {
+    console.error('Index.html not found at any of these paths:', possibleIndexPaths)
+    console.error('Static path:', staticPath)
+    console.error('Static path exists:', fs.existsSync(staticPath))
+    if (fs.existsSync(staticPath)) {
+      console.error('Static directory contents:', fs.readdirSync(staticPath))
+    }
+    return res.status(404).json({ error: 'Client build not found', paths: possibleIndexPaths })
+  }
+  
+  res.sendFile(indexPath)
 })
 
 // Error handling middleware
