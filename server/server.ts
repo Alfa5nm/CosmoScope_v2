@@ -136,7 +136,7 @@ const possiblePaths = [
   join(__dirname, '../../client/dist'),        // Alternative: server/dist -> ../../client/dist
 ]
 
-let staticPath = possiblePaths[0]
+let staticPath: string = possiblePaths[0]!
 for (const path of possiblePaths) {
   if (fs.existsSync(path)) {
     staticPath = path
@@ -216,7 +216,7 @@ app.get('*', (req, res) => {
     join(process.cwd(), 'dist/index.html'),
   ]
   
-  let indexPath = possibleIndexPaths[0]
+  let indexPath: string = possibleIndexPaths[0]!
   for (const path of possibleIndexPaths) {
     if (fs.existsSync(path)) {
       indexPath = path
@@ -238,7 +238,7 @@ app.get('*', (req, res) => {
     return res.status(404).json({ error: 'Client build not found', paths: possibleIndexPaths })
   }
   
-  res.sendFile(indexPath)
+  return res.sendFile(indexPath)
 })
 
 // Error handling middleware
