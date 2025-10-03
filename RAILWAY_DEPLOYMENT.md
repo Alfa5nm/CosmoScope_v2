@@ -45,7 +45,7 @@ In the Railway dashboard, go to your project → Variables tab and set:
 ```
 NODE_ENV=production
 PORT=3000
-NASA_API_KEY=your_actual_nasa_api_key
+NASA_API_KEY=NASA_API_KEY=gXsxpI9UneMEaSbvyVSfd8lFRMKbcicRzdihffxY
 ALLOWED_ORIGINS=https://your-app-name.railway.app
 DATABASE_PATH=/app/db.sqlite
 ```
